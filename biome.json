@@ -1,0 +1,133 @@
+{
+  "$schema": "https://biomejs.dev/schemas/latest/schema.json",
+
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+
+  "files": {
+    "includes": [
+      "**/*.js",
+      "**/*.mjs",
+      "**/*.cjs",
+      "**/*.ts",
+      "**/*.mts",
+      "**/*.cts",
+      "**/*.jsx",
+      "**/*.tsx",
+      "**/*.json",
+      "**/*.jsonc",
+
+      "!**/*.generated.*",
+      "!**/__generated__",
+      "!**/generated",
+
+      "!!**/node_modules",
+      "!!**/dist",
+      "!!**/build",
+      "!!**/.next",
+      "!!**/out",
+      "!!**/coverage",
+      "!!**/.turbo",
+      "!!**/.git",
+      "!!**/tmp",
+      "!!**/temp",
+      "!!**/.cache",
+      "!!**/public/assets",
+
+      "!!**/.vscode",
+      "!!**/.idea",
+      "!!**/.DS_Store",
+      "!!**/thumbs.db"
+    ],
+    "ignoreUnknown": true,
+    "maxSize": 10485760
+  },
+
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80,
+    "lineEnding": "lf"
+  },
+
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "recommended": true,
+        "organizeImports": "on"
+      }
+    }
+  },
+
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": {
+          "level": "warn",
+          "fix": "none"
+        },
+        "noUnusedFunctionParameters": {
+          "level": "warn",
+          "fix": "none"
+        },
+        "useExhaustiveDependencies": "off",
+        "noUndeclaredVariables": "error"
+      },
+
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noDoubleEquals": "error",
+        "noMisleadingCharacterClass": "error"
+      },
+
+      "style": {
+        "noImplicitBoolean": "error",
+        "noNegationElse": "error",
+        "useBlockStatements": "error",
+        "useConsistentArrayType": "error",
+        "useTemplate": "warn"
+      },
+
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off",
+        "noForEach": "warn"
+      },
+
+      "a11y": {
+        "useValidAriaProps": "error",
+        "useValidAriaValues": "error"
+      },
+
+      "security": {
+        "noDangerouslySetInnerHtml": "error"
+      }
+    }
+  },
+
+  "javascript": {
+    "globals": ["Bun"],
+    "formatter": {
+      "quoteStyle": "single",
+      "trailingCommas": "all",
+      "semicolons": "asNeeded",
+      "arrowParentheses": "asNeeded"
+    }
+  },
+
+  "json": {
+    "formatter": {
+      "enabled": true,
+      "indentStyle": "space",
+      "indentWidth": 2
+    }
+  }
+}

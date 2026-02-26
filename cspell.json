@@ -1,0 +1,31 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "useGitignore": true,
+
+  "ignorePaths": [
+    "**/.git/**",
+    "**/.gitignore",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/*.map",
+    "**/*.lock",
+    "**/bun.lock*"
+  ],
+
+  "words": [
+    "zenums",
+    "Zenums",
+    "ZenumsError",
+    "toZodEnum",
+
+    "kebab",
+    "snake",
+    "pascal",
+    "camelcase",
+
+    "stdout",
+    "stderr"
+  ]
+}
