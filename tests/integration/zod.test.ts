@@ -33,4 +33,26 @@ describe('integration: zenums/zod', () => {
     const value: T = 'bb'
     expect(value).toBe('bb')
   })
+
+  test('source-of-truth tuple can be reused for createEnum + z.enum (no wrapper, order preserved)', () => {
+    const VALUES = ['stdout', 'stderr', 'API2'] as const
+
+    const E = createEnum(VALUES)
+    const Schema = z.enum(VALUES)
+
+    // zenums: values preserved exactly (author order)
+    expect(E.values).toEqual(VALUES)
+
+    // zod: accepts only provided values
+    for (const v of VALUES) {
+      expect(Schema.parse(v)).toBe(v)
+      expect(Schema.safeParse(v).success).toBe(true)
+    }
+
+    const bad = Schema.safeParse('nope')
+    expect(bad.success).toBe(false)
+
+    // zod: tuple order preserved as options
+    expect(Schema.options).toEqual([...VALUES])
+  })
 })
