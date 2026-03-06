@@ -146,8 +146,8 @@ You can also skip the wrapper and use Zod directly:
 const VALUES = ['stdout', 'stderr'] as const
 const Transport = createEnum(VALUES)
 
-const SchemaA = z.enum(Transport.values) // uses validated tuple values (recommended)
-const SchemaB = z.nativeEnum(Transport.constants) // uses generated constants keys (optional)
+const SchemaA = z.enum(Transport.values) // recommended
+const SchemaB = z.nativeEnum(Transport.constants) // optional
 ```
 
 In general, `z.enum(Transport.values)` is the most predictable for string-literal unions and error messages.
