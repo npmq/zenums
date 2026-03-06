@@ -8,7 +8,7 @@ Type-safe enum creation for TypeScript and Zod — stop duplicating your enums.
 - `constants` — CONSTANT_CASE keys
 - `names` — PascalCase keys
 - `is(value)` — type guard
-- `parse(value)` — runtime parser (throws `ZenumsError`)
+- `parse(value)` — runtime parser for a single value (throws `ZenumsError`)
 - `withValues(fn)` — runs `fn(values)` without copying
 
 It also supports **optional** Zod integration via a small subpath export.
@@ -19,7 +19,8 @@ It also supports **optional** Zod integration via a small subpath export.
 
 ```bash
 npm i zenums
-# optional peer (only if you want the zod helper)
+
+# optional
 npm i zod
 ```
 
@@ -33,7 +34,7 @@ import { createEnum } from 'zenums'
 const Transport = createEnum(['stdout', 'stderr', 'API2'] as const)
 
 // tuple values (single source of truth)
-Transport.valuess
+Transport.values
 // => ['stdout', 'stderr', 'API2']
 
 // constants + names
@@ -105,7 +106,8 @@ If you need the generated keys for debugging, you can call `toConstKey(value)` /
 
 ### Input rules
 
-`createEnum()` validates values before generating keys. Summary of the rules:
+`createEnum()` validates your values before generating keys to keep keys deterministic and imports safe.
+Summary:
 
 - **Array shape:** non-empty array
 - **Type:** each item must be a string
@@ -119,6 +121,8 @@ If you need the generated keys for debugging, you can call `toConstKey(value)` /
 
 When multiple issues exist, `createEnum()` throws a single **aggregated** error (`definitionRejected`) with a stable, deterministic report.
 
+---
+
 ## Zod integration (optional)
 
 If you use Zod, `zenums/zod` provides a thin wrapper over `z.enum()` that preserves tuple literal types.
@@ -129,8 +133,8 @@ import * as z from 'zod'
 import { createEnum } from 'zenums'
 import { toZodEnum } from 'zenums/zod'
 
-const E = createEnum(['stdout', 'stderr'] as const)
-const Schema = toZodEnum(z, E.values)
+const Transport = createEnum(['stdout', 'stderr'] as const)
+const Schema = toZodEnum(z, Transport.values)
 
 Schema.parse('stdout') // ok
 Schema.safeParse('nope').success // false
@@ -139,19 +143,18 @@ Schema.safeParse('nope').success // false
 You can also skip the wrapper and use Zod directly:
 
 ```ts
-const VALUES = ['active', 'pending'] as const
-const E = createEnum(VALUES)
+const VALUES = ['stdout', 'stderr'] as const
+const Transport = createEnum(VALUES)
 
-const SchemaA = z.enum(VALUES)    // uses tuple values (recommended)
-const SchemaB = z.nativeEnum(E.constants) // uses generated constants keys (optional)
+const SchemaA = z.enum(Transport.values) // uses validated tuple values (recommended)
+const SchemaB = z.nativeEnum(Transport.constants) // uses generated constants keys (optional)
 ```
 
-In general, **`z.enum(E.values)` is the most predictable** for string-literal unions and error messages.
-
+In general, `z.enum(Transport.values)` is the most predictable for string-literal unions and error messages.
 
 ---
 
-## “Source of truth” workflow (no wrapper)
+## Source of truth workflow (no wrapper)
 
 You can also keep your tuple as the single source of truth and reuse it for both `createEnum()` and `z.enum()`.
 
@@ -159,10 +162,10 @@ You can also keep your tuple as the single source of truth and reuse it for both
 import * as z from 'zod'
 import { createEnum } from 'zenums'
 
-const VALUES = ['active', 'pending'] as const // 1) source of truth
+const VALUES = ['stdout', 'stderr'] as const // 1) source tuple
 
 const Status = createEnum(VALUES) // 2) runtime utilities
-const StatusSchema = z.enum(VALUES) // 3) validation schema
+const StatusSchema = z.enum(Status.values) // 3) validation schema
 ```
 
 ---
@@ -180,7 +183,7 @@ createEnum(['foo', 'foo', 'foo-bar', 'foo_bar', 'a'] as const)
 
 Example output:
 
-```
+```text
 ZenumsError: Enum definition rejected.
 
 Stats:
@@ -207,24 +210,6 @@ Collisions (names):
     • 'foo-bar'
     • 'foo_bar'
 ```
-
----
-
-## Value rules
-
-zenums validates values **without normalizing your inputs** (author intent is preserved).
-
-Rules (summary):
-
-- values must be strings
-- minimum length: **2**
-- allowed chars: letters, digits, `-`, `_`
-- separators (`-` / `_`) cannot be mixed
-- no leading/trailing separator, no double separators
-- numeric-only values are forbidden (even with separators, e.g. `1-2`)
-- values must not start with a digit
-- **if a value contains separators, it must be lowercase**
-- ALL_CAPS values without digits are forbidden (but `API2` / `R2D2` are allowed)
 
 ---
 
