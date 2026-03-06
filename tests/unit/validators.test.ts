@@ -47,8 +47,8 @@ const INVALID_CHARS_DETAILS = [
   { value: '..foo', invalidChar: '.' },
   { value: 'foo..', invalidChar: '.' },
 
-  // non-ASCII letter without earlier forbidden chars (stable invalidChar)
-  { value: 'abБ', invalidChar: 'Б' },
+  // non-ASCII char without earlier forbidden chars (stable invalidChar)
+  { value: 'ab€', invalidChar: '€' },
 ] as const satisfies readonly InvalidChars[]
 
 const INVALID_CASES = {
