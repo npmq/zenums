@@ -13,6 +13,15 @@ Type-safe enum creation for TypeScript and Zod — stop duplicating your enums.
 
 It also supports **optional** Zod integration via a small subpath export.
 
+## Why zenums?
+
+Use `zenums` when you want one tuple to remain the single source of truth for:
+
+- literal union types
+- runtime enum-like access
+- stable generated keys
+- Zod schemas without redefining values
+
 ---
 
 ## Install
@@ -33,7 +42,7 @@ import { createEnum } from 'zenums'
 
 const Transport = createEnum(['stdout', 'stderr', 'API2'] as const)
 
-// tuple values (single source of truth)
+// tuple values (single source of truth, preserved as authored)
 Transport.values
 // => ['stdout', 'stderr', 'API2']
 
@@ -119,7 +128,7 @@ Summary:
 - **CAPS tokens:** `ALL_CAPS` without digits is rejected, but `API2` / `R2D2` are allowed
 - **Duplicates:** exact duplicate strings are rejected (no normalization)
 
-When multiple issues exist, `createEnum()` throws a `ZenumsError` with code definitionRejected and a deterministic report.
+When multiple issues exist, `createEnum()` throws a `ZenumsError` with code `definitionRejected` and a deterministic report.
 
 ---
 
@@ -154,9 +163,9 @@ In general, `z.enum(Transport.values)` is the most predictable for string-litera
 
 ---
 
-## Source of truth workflow (no wrapper)
+## Source of truth workflow
 
-You can also keep your tuple as the single source of truth and reuse it for both `createEnum()` and `z.enum()`.
+Keep your tuple as the single source of truth and reuse it for both `createEnum()` and `z.enum()`.
 
 ```ts
 import * as z from 'zod'
