@@ -106,7 +106,7 @@ If you need the generated keys for debugging, you can call `toConstKey(value)` /
 
 ### Input rules
 
-`createEnum()` validates your values before generating keys to keep keys deterministic and imports safe.
+`createEnum()` validates values before generating keys.
 Summary:
 
 - **Array shape:** non-empty array
@@ -119,7 +119,7 @@ Summary:
 - **CAPS tokens:** `ALL_CAPS` without digits is rejected, but `API2` / `R2D2` are allowed
 - **Duplicates:** exact duplicate strings are rejected (no normalization)
 
-When multiple issues exist, `createEnum()` throws a single **aggregated** error (`definitionRejected`) with a stable, deterministic report.
+When multiple issues exist, `createEnum()` throws a `ZenumsError` with code definitionRejected and a deterministic report.
 
 ---
 
@@ -172,8 +172,7 @@ const StatusSchema = z.enum(Status.values) // 3) validation schema
 
 ## Aggregated report
 
-When an enum definition has issues (invalid values, duplicates, collisions),
-`createEnum()` throws a `ZenumsError` with a structured, deterministic report.
+When multiple issues exist, `createEnum()` throws a `ZenumsError` with code `definitionRejected` and a deterministic report.
 
 ```ts
 import { createEnum } from 'zenums'
@@ -181,7 +180,7 @@ import { createEnum } from 'zenums'
 createEnum(['foo', 'foo', 'foo-bar', 'foo_bar', 'a'] as const)
 ```
 
-Example output:
+Example output (formatted for logs and snapshots):
 
 ```text
 ZenumsError: Enum definition rejected.
@@ -195,20 +194,20 @@ Stats:
 
 Details:
 Invalid:
-  • [4] tooShort
+  • [4] "a" — tooShort: minimum length is 2
 
 Duplicates:
-  • 'foo' at indexes: 0, 1
+  • [0, 1] "foo" — duplicate
 
 Collisions (constants):
-  Key 'FOO_BAR' is produced by:
-    • 'foo-bar'
-    • 'foo_bar'
+  • "FOO_BAR" — collision (sources):
+    • "foo-bar"
+    • "foo_bar"
 
 Collisions (names):
-  Key 'FooBar' is produced by:
-    • 'foo-bar'
-    • 'foo_bar'
+  • "FooBar" — collision (sources):
+    • "foo-bar"
+    • "foo_bar"
 ```
 
 ---
