@@ -13,6 +13,9 @@ const MAX_EXPECTED_PREVIEW = 10
 
 const NL = '\n'
 
+// Shared header for aggregated definitionRejected message
+const DEFINITION_REJECTED_HEADER = 'Enum definition rejected.'
+
 function joinLines(lines: readonly string[]): string {
   return lines.join(NL)
 }
@@ -108,30 +111,21 @@ const MESSAGES = {
     `Duplicate value found at index ${ctx.index}: '${ctx.value}'`,
 
   collision: ctx => {
-    const body = joinLines(ctx.details)
-
-    return body.length === 0
-      ? `Key collision detected in ${ctx.kind}!`
-      : `Key collision detected in ${ctx.kind}!${NL}${NL}${body}`
-  },
-
-  // Aggregated failure: invalid items / duplicates / collisions collected first, then rejected.
-  // Variant D: details (human) + stats (quick dashboard numbers).
-  definitionRejected: ctx => {
-    const header = 'Enum definition rejected.'
-    const statsBlock = formatStats(ctx.stats)
-
-    // details are already "human-readable lines" prepared by validators/create step
     if (!hasLines(ctx.details)) {
-      return `${header}${NL}${NL}${statsBlock}`
+      return `Key collision detected in ${ctx.kind}!`
     }
 
-    return (
-      `${header}${NL}${NL}` +
-      `${statsBlock}${NL}${NL}` +
-      `Details:${NL}` +
-      `${joinLines(ctx.details)}`
-    )
+    return `Key collision detected in ${ctx.kind}!${NL}${NL}${joinLines(ctx.details)}`
+  },
+
+  // Aggregated failure: prefer deterministic report lines (ctx.details) for logs/snapshots.
+  // If details are absent, fall back to a minimal header + stats.
+  definitionRejected: ctx => {
+    if (hasLines(ctx.details)) {
+      return joinLines(ctx.details)
+    }
+
+    return `${DEFINITION_REJECTED_HEADER}${NL}${NL}${formatStats(ctx.stats)}`
   },
 } satisfies { [K in EnumErrorCode]: MakeMessage<K> }
 
