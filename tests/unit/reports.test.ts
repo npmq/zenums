@@ -144,9 +144,9 @@ describe('reports', () => {
       expectTextContainsAll(text, SUMMARY_NEEDLES_WITH_ISSUES)
 
       // Invalids are sorted by index, then code
-      const iCapsOnly = text.indexOf('  • [0] capsOnly')
-      const iNotMeaningful = text.indexOf('  • [2] notMeaningful')
-      const iTooShort = text.indexOf('  • [2] tooShort')
+      const iCapsOnly = text.indexOf('  • [0] "ABC" — capsOnly:')
+      const iNotMeaningful = text.indexOf('  • [2] "a" — notMeaningful:')
+      const iTooShort = text.indexOf('  • [2] "x" — tooShort:')
 
       expect(iCapsOnly).toBeGreaterThanOrEqual(0)
       expect(iNotMeaningful).toBeGreaterThanOrEqual(0)
@@ -156,8 +156,8 @@ describe('reports', () => {
       expect(iNotMeaningful).toBeLessThan(iTooShort)
 
       // Duplicates are sorted by value
-      const dA = text.indexOf("  • 'a' at indexes: 1, 3")
-      const dB = text.indexOf("  • 'b' at indexes: 2, 5")
+      const dA = text.indexOf('  • [1, 3] "a" — duplicate')
+      const dB = text.indexOf('  • [2, 5] "b" — duplicate')
 
       expect(dA).toBeGreaterThanOrEqual(0)
       expect(dB).toBeGreaterThanOrEqual(0)
@@ -167,22 +167,22 @@ describe('reports', () => {
       expectTextContainsAll(text, COLLISION_SECTION_NEEDLES)
 
       // constants: key A should appear before key B
-      const cA = text.indexOf("  Key 'A' is produced by:")
-      const cB = text.indexOf("  Key 'B' is produced by:")
+      const cA = text.indexOf('  • "A" — collision (sources):')
+      const cB = text.indexOf('  • "B" — collision (sources):')
 
       expect(cA).toBeGreaterThanOrEqual(0)
       expect(cB).toBeGreaterThanOrEqual(0)
       expect(cA).toBeLessThan(cB)
 
       // sources sorted within each key (a1 before a2, b1 before b2, z1 before z2)
-      expect(text.indexOf("    • 'a1'")).toBeLessThan(
-        text.indexOf("    • 'a2'"),
+      expect(text.indexOf('    • "a1"')).toBeLessThan(
+        text.indexOf('    • "a2"'),
       )
-      expect(text.indexOf("    • 'b1'")).toBeLessThan(
-        text.indexOf("    • 'b2'"),
+      expect(text.indexOf('    • "b1"')).toBeLessThan(
+        text.indexOf('    • "b2"'),
       )
-      expect(text.indexOf("    • 'z1'")).toBeLessThan(
-        text.indexOf("    • 'z2'"),
+      expect(text.indexOf('    • "z1"')).toBeLessThan(
+        text.indexOf('    • "z2"'),
       )
     })
   })

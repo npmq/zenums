@@ -49,8 +49,11 @@ const MIXED_DETAILS_NEEDLES = Object.freeze([
   'Invalid:',
   'Duplicates:',
   ...COLLISION_SECTION_NEEDLES,
-  "Key '",
-  'is produced by:',
+  '— collision (sources):',
+  '"FOO_BAR"',
+  '"FooBar"',
+  '"foo-bar"',
+  '"foo_bar"',
 ] as const)
 
 describe('rejected', () => {
