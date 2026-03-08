@@ -22,18 +22,6 @@ const INDENT = Object.freeze({
   l2: '    ',
 } as const)
 
-// Line templates for report rendering (single source of truth for wording + spacing)
-const TPL = Object.freeze({
-  stat: (name: string, value: number | string) =>
-    `${INDENT.l1}${name}: ${value}`,
-  invalidItem: (index: number, code: string) =>
-    `${INDENT.l1}• [${index}] ${code}`,
-  duplicateItem: (value: string, indexes: readonly number[]) =>
-    `${INDENT.l1}• '${value}' at indexes: ${indexes.join(', ')}`,
-  collisionKey: (key: string) => `${INDENT.l1}Key '${key}' is produced by:`,
-  collisionSource: (source: string) => `${INDENT.l2}• '${source}'`,
-} as const)
-
 // Comparator bundle for local consistency (keeps sorting rules in one place)
 
 type InvalidEntry = RejectedReport['invalid'][number]
@@ -47,6 +35,68 @@ const byInvalid = (a: InvalidEntry, b: InvalidEntry) =>
 
 const byDuplicate = (a: DuplicateEntry, b: DuplicateEntry) =>
   a.value.localeCompare(b.value)
+
+function invalidMessage(it: InvalidEntry): string {
+  switch (it.code) {
+    case 'notString':
+      return `expected string, received ${it.receivedType}`
+
+    case 'tooShort':
+      return `minimum length is ${it.minLength}`
+
+    case 'invalidChars':
+      return `char="${it.invalidChar}" is not allowed`
+
+    case 'mixedSeparatorStyles':
+      return `use '-' or '_' but not both`
+
+    case 'badSeparatorPlacement':
+      return `no leading/trailing or double separators`
+
+    case 'numericOnly':
+      return `must contain at least one letter`
+
+    case 'startsWithDigit':
+      return `must not start with a digit`
+
+    case 'separatedMustBeLowercase':
+      return `separated values must be lowercase`
+
+    case 'notMeaningful':
+      return `must contain at least one letter`
+
+    case 'capsOnly':
+      return `ALL_CAPS without digits is not allowed`
+
+    default: {
+      const _exhaustive: never = it
+      return String(_exhaustive)
+    }
+  }
+}
+
+// Line templates for report rendering (single source of truth for wording + spacing)
+const TPL = Object.freeze({
+  stat: (name: string, value: number | string) =>
+    `${INDENT.l1}${name}: ${value}`,
+
+  invalidItem: (it: InvalidEntry) => {
+    const valuePart =
+      it.code === 'notString'
+        ? `<non-string: ${it.receivedType}>`
+        : `"${it.value}"`
+
+    return `${INDENT.l1}• [${it.index}] ${valuePart} — ${it.code}: ${invalidMessage(it)}`
+  },
+
+  duplicateItem: (value: string, indexes: readonly number[]) =>
+    `${INDENT.l1}• [${indexes.join(', ')}] "${value}" — duplicate`,
+
+  collisionKey: (key: string) =>
+    `${INDENT.l1}• "${key}" — collision (sources):`,
+
+  collisionSource: (source: string) => `${INDENT.l2}• "${source}"`,
+} as const)
 
 // Stable helpers for deterministic, snapshot-friendly output
 function sortCollisionItems(
@@ -131,7 +181,7 @@ export const buildDefinitionRejectedDetails = (
     const invalidSorted = sorted(report.invalid, byInvalid)
 
     for (const it of invalidSorted) {
-      lines.push(TPL.invalidItem(it.index, it.code))
+      lines.push(TPL.invalidItem(it))
     }
   }
 
