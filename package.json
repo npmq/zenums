@@ -3,11 +3,9 @@
   "version": "0.1.0",
   "description": "Type-safe enum creation for TypeScript and Zod. Stop duplicating your enums!",
   "type": "module",
-
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -27,15 +25,12 @@
     },
     "./package.json": "./package.json"
   },
-
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
-
   "sideEffects": false,
-
   "keywords": [
     "typescript",
     "zod",
@@ -53,66 +48,49 @@
     "enum-utility",
     "const-enum-alternative"
   ],
-
   "author": {
     "name": "Ant",
     "email": "jo3diz@gmail.com"
   },
-
   "license": "MIT",
-
   "repository": {
     "type": "git",
     "url": "git+https://github.com/npmq/zenums.git"
   },
-
   "bugs": {
     "url": "https://github.com/npmq/zenums/issues"
   },
-
   "homepage": "https://github.com/npmq/zenums#readme",
-
   "engines": {
-    "node": ">=18.0.0",
-    "bun": ">=1.3.4"
+    "node": ">=20.0.0"
   },
-
   "peerDependencies": {
     "zod": "^3.0.0 || ^4.0.0"
   },
-
   "peerDependenciesMeta": {
     "zod": {
       "optional": true
     }
   },
-
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
     "typecheck:consumer": "tsc -p tests/consumer/tsconfig.bundler.json --noEmit && tsc -p tests/consumer/tsconfig.nodenext.json --noEmit",
-
     "lint": "biome lint .",
     "lint:fix": "biome lint . --write",
-
     "format": "biome format . --write",
-
     "test:unit": "bun test tests/unit",
     "test:integration": "bun run build && bun test tests/integration",
-
     "smoke": "bun run build && node scripts/smoke.mjs",
     "test": "bun run test:unit",
     "test:all": "bun run test:unit && bun run test:integration && bun run smoke && npm run typecheck:consumer",
-
     "prepublishOnly": "npm run typecheck && npm run typecheck:test && npm run typecheck:consumer && npm run build && bun run test:all"
   },
-
   "devDependencies": {
-    "@biomejs/biome": "^2.4.4",
-    "@types/bun": "^1.3.9",
+    "@biomejs/biome": "^2.4.6",
+    "@types/bun": "^1.3.10",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "zod": "^4.3.6"
