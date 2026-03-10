@@ -221,6 +221,14 @@ Collisions (names):
 
 ---
 
+## Runtime support
+
+`zenums` is runtime-agnostic and works in both **Node.js (>=20)** and **Bun**.
+
+Note: the project uses **Bun** for development/CI (`bun test`, `bun run build`), but the published package is plain ESM/CJS and does not require Bun at runtime.
+
+---
+
 ## Exports
 
 ```ts
