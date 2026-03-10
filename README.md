@@ -1,4 +1,4 @@
-# zenums
+# zenums [![CI](https://github.com/npmq/zenums/actions/workflows/ci.yml/badge.svg)](https://github.com/npmq/zenums/actions/workflows/ci.yml)
 
 Type-safe enum creation for TypeScript and Zod — stop duplicating your enums.
 
