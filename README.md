@@ -1,4 +1,4 @@
-# zenums
+# zenums [![CI](https://github.com/npmq/zenums/actions/workflows/ci.yml/badge.svg)](https://github.com/npmq/zenums/actions/workflows/ci.yml)
 
 Type-safe enum creation for TypeScript and Zod — stop duplicating your enums.
 
@@ -29,7 +29,7 @@ Use `zenums` when you want one tuple to remain the single source of truth for:
 ```bash
 npm i zenums
 
-# optional
+# optional, only if you use zenums/zod
 npm i zod
 ```
 
@@ -41,6 +41,9 @@ npm i zod
 import { createEnum } from 'zenums'
 
 const Transport = createEnum(['stdout', 'stderr', 'API2'] as const)
+
+type TransportValue = (typeof Transport.values)[number]
+// 'stdout' | 'stderr' | 'API2'
 
 // tuple values (single source of truth, preserved as authored)
 Transport.values
@@ -92,23 +95,23 @@ Transport.names.API2         // 'API2'
 Some different inputs can generate the **same keys** after normalization:
 
 ```ts
-const E = createEnum(['foo-bar', 'foo_bar'] as const)
+createEnum(['foo-bar', 'foo_bar'] as const)
 // ❌ throws: collision (both produce FOO_BAR / FooBar)
 ```
 
 Other “edge” but valid examples:
 
 ```ts
-const E = createEnum(['r2d2', 'api2', 'my_value'] as const)
+const ValidExample = createEnum(['r2d2', 'api2', 'my_value'] as const)
 
-E.constants.R2D2    // 'r2d2'
-E.names.R2d2        // 'r2d2'
+ValidExample.constants.R2D2     // 'r2d2'
+ValidExample.names.R2d2         // 'r2d2'
 
-E.constants.API2    // 'api2'
-E.names.Api2        // 'api2'
+ValidExample.constants.API2     // 'api2'
+ValidExample.names.Api2         // 'api2'
 
-E.constants.MY_VALUE // 'my_value'
-E.names.MyValue      // 'my_value'
+ValidExample.constants.MY_VALUE // 'my_value'
+ValidExample.names.MyValue      // 'my_value'
 ```
 
 If you need the generated keys for debugging, you can call `toConstKey(value)` / `toNameKey(value)` directly.
@@ -116,6 +119,9 @@ If you need the generated keys for debugging, you can call `toConstKey(value)` /
 ### Input rules
 
 `createEnum()` validates values before generating keys.
+
+Rules are enforced to keep generated keys deterministic, readable, and collision-safe.
+
 Summary:
 
 - **Array shape:** non-empty array
@@ -133,6 +139,8 @@ When multiple issues exist, `createEnum()` throws a `ZenumsError` with code `def
 ---
 
 ## Zod integration (optional)
+
+Requires `zod` to be installed in the consumer project.
 
 If you use Zod, `zenums/zod` provides a thin wrapper over `z.enum()` that preserves tuple literal types.
 Return type is inferred for **Zod v3 / v4** compatibility.
@@ -152,6 +160,9 @@ Schema.safeParse('nope').success // false
 You can also skip the wrapper and use Zod directly:
 
 ```ts
+import * as z from 'zod'
+import { createEnum } from 'zenums'
+
 const VALUES = ['stdout', 'stderr'] as const
 const Transport = createEnum(VALUES)
 
@@ -174,7 +185,7 @@ import { createEnum } from 'zenums'
 const VALUES = ['stdout', 'stderr'] as const // 1) source tuple
 
 const Status = createEnum(VALUES) // 2) runtime utilities
-const StatusSchema = z.enum(Status.values) // 3) validation schema
+const StatusSchema = z.enum(Status.values) // 3) validation schema, same tuple reused
 ```
 
 ---
@@ -229,7 +240,7 @@ Note: the project uses **Bun** for development/CI (`bun test`, `bun run build`),
 
 ---
 
-## Exports
+## Public API
 
 ```ts
 import { createEnum, toConstKey, toNameKey, ZenumsError } from 'zenums'
