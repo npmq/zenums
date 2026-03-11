@@ -1,6 +1,6 @@
 {
   "name": "zenums",
-  "version": "0.1.0",
+  "version": "0.1.1-beta.0",
   "description": "Type-safe enum creation for TypeScript and Zod. Stop duplicating your enums!",
   "type": "module",
   "main": "./dist/index.cjs",
