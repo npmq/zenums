@@ -14,7 +14,7 @@ export default defineConfig({
 
   dts: true,
   clean: true,
-  sourcemap: true,
+  sourcemap: false,
   minify: false,
 
   outDir: 'dist',
