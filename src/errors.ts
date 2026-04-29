@@ -6,6 +6,11 @@ type Ctx<K extends EnumErrorCode> = Extract<EnumErrorContext, { code: K }>
 // Message builder signature bound to a specific error code/context pair
 type MakeMessage<K extends EnumErrorCode> = (ctx: Ctx<K>) => string
 
+// Optional V8 capability: available in Node/Bun, absent from standard ES Error types
+type StackTraceErrorConstructor = ErrorConstructor & {
+  captureStackTrace?: (targetObject: object, constructorOpt?: unknown) => void
+}
+
 // Single place to tune preview size for invalidValue messages
 const MAX_EXPECTED_PREVIEW = 10
 
@@ -137,9 +142,12 @@ export class ZenumsError extends Error {
   constructor(context: EnumErrorContext, message: string) {
     super(message)
 
-    // Better stack traces in V8 environments (Node, Bun)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, ZenumsError)
+    // Use V8 stack cleanup when available, without depending on Node ambient types
+    const captureStackTrace = (Error as StackTraceErrorConstructor)
+      .captureStackTrace
+
+    if (typeof captureStackTrace === 'function') {
+      captureStackTrace(this, ZenumsError)
     }
 
     this.name = 'ZenumsError'

@@ -8,6 +8,8 @@
     "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
 
+    "types": ["bun"],
+
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
@@ -26,6 +28,11 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*.ts", "tests/unit/**/*.ts", "tests/helpers/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests/consumer/**/*.ts",
+    "tests/integration/**/*.ts"
+  ]
 }
