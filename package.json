@@ -92,10 +92,9 @@
     "test:integration": "bun test tests/integration",
     "smoke": "node scripts/smoke.mjs",
     "test": "bun run test:unit",
-    "test:all": "bun run test:unit && bun run build && bun run test:integration && bun run smoke && npm run typecheck:consumer",
+    "test:all": "bun run test:unit && bun run test:integration && bun run smoke && npm run typecheck:consumer",
 
-    "pack:check": "npm pack --dry-run",
-    "verify": "npm run lint && npm run typecheck && npm run typecheck:test && bun run test:all",
+    "verify": "npm run lint && npm run typecheck && bun run build && npm run typecheck:test && bun run test:all",
     "prepublishOnly": "npm run verify"
   },
   "devDependencies": {
