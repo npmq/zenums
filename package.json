@@ -1,6 +1,6 @@
 {
   "name": "zenums",
-  "version": "0.1.4",
+  "version": "0.1.5-beta.0",
   "description": "Type-safe enum creation for TypeScript and Zod. Stop duplicating your enums!",
   "keywords": [
     "typescript",
@@ -79,21 +79,17 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "typecheck:test": "tsc -p tsconfig.json --noEmit",
     "typecheck:consumer": "tsc -p tests/consumer/tsconfig.bundler.json --noEmit && tsc -p tests/consumer/tsconfig.nodenext.json --noEmit",
-
     "lint": "biome lint .",
     "lint:fix": "biome lint . --write",
     "format": "biome format . --write",
-
     "test:unit": "bun test tests/unit",
     "test:integration": "bun test tests/integration",
     "smoke": "node scripts/smoke.mjs",
     "test": "bun run test:unit",
     "test:all": "bun run test:unit && bun run test:integration && bun run smoke && npm run typecheck:consumer",
-
     "verify": "npm run lint && npm run typecheck && bun run build && npm run typecheck:test && bun run test:all",
     "prepublishOnly": "npm run verify"
   },
