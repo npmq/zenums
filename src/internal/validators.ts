@@ -1,5 +1,10 @@
 import { throwEnumError } from '../errors'
-import type { CollisionItem, EnumErrorContext, EnumKeyKind } from '../types'
+import type {
+  CollisionItem,
+  EnumKeyKind,
+  RejectedDuplicateItem,
+  RejectedInvalidItem,
+} from '../types'
 import { invariant } from './invariant'
 
 // Assertion signature for createEnum input validation
@@ -54,18 +59,12 @@ function assertNonEmptyArray(
   }
 }
 
-// --- Aggregation types (no throw)
-
-type IndexedCtx = Extract<EnumErrorContext, { index: number }>
-type DuplicateCtx = Extract<IndexedCtx, { code: 'duplicate' }>
-type RejectedInvalidItem = Exclude<IndexedCtx, DuplicateCtx>
-
 /** Aggregated stage-2 output for definitionRejected: valid values + structured rejections */
 export type CollectedValues = Readonly<{
   received: number
   valid: readonly string[]
   invalid: readonly RejectedInvalidItem[]
-  duplicates: readonly Readonly<{ value: string; indexes: readonly number[] }>[]
+  duplicates: readonly RejectedDuplicateItem[]
 }>
 
 // Narrows invalid payload to the exact union member for type-safe error contexts
@@ -198,7 +197,7 @@ function validateEnumValue(
 // Builds duplicates list from value -> indexes map (sorted for stable logs)
 function buildDuplicates(
   indexMap: ReadonlyMap<string, readonly number[]>,
-): readonly Readonly<{ value: string; indexes: readonly number[] }>[] {
+): readonly RejectedDuplicateItem[] {
   return Object.freeze(
     Array.from(indexMap.entries())
       .filter(([, idx]) => idx.length > 1)

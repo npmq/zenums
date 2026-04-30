@@ -42,8 +42,11 @@ function addSource(
   list.push(source)
 }
 
-/* Aggregates validation outcome into a single definitionRejected payload
-   Contract: shape errors are fail-fast (thrown by collectors); value-level issues are aggregated */
+/**
+ * Aggregates validation outcome into a single definitionRejected payload
+ *
+ * Shape errors are fail-fast; value-level issues are aggregated
+ */
 export const prepareDefinition = (values: unknown): PrepareDefinitionResult => {
   const collected = collectEnumValues(values)
 

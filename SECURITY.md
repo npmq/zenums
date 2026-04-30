@@ -20,10 +20,12 @@ Please include:
 
 ## Response process
 
-I will review reports on a best-effort basis.
+Reports are reviewed on a best-effort basis.
 
 If the issue is confirmed, I will investigate a fix and publish an update when appropriate.
 I may also add documentation or release notes if that helps users reduce risk.
+
+Please avoid public disclosure until the issue has been reviewed.
 
 ## Scope
 

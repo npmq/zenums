@@ -18,6 +18,7 @@ jobs:
     name: Test (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
     strategy:
       fail-fast: false
       matrix:
@@ -48,5 +49,5 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
-      - name: Test
-        run: bun run test:all
+      - name: Verify
+        run: npm run verify

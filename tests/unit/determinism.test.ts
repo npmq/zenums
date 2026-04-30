@@ -31,6 +31,14 @@ const UNIQ_BY_ID_SORTED = [
   { id: 'c', v: 2 },
 ] as const
 
+const UNIQ_BY_ID_INPUT_UNCHANGED = [
+  { id: 'b', v: 1 },
+  { id: 'a', v: 10 },
+  { id: 'b', v: 999 },
+  { id: 'c', v: 2 },
+  { id: 'a', v: 777 },
+] as const
+
 // Shared invariant for determinism helpers: frozen copy semantics + no input mutation
 function expectFrozenCopy<T>(
   out: readonly T[],
@@ -45,7 +53,6 @@ function expectFrozenCopy<T>(
 }
 
 describe('determinism helpers', () => {
-  // sorted contract: returns a new frozen array with deterministic ordering
   describe('sorted', () => {
     test('returns a new frozen array and does not mutate input', () => {
       const out = sorted(NUMBERS_INPUT, (a, b) => a - b)
@@ -59,7 +66,6 @@ describe('determinism helpers', () => {
     })
   })
 
-  // sortedStrings contract: localeCompare ordering with frozen copy semantics
   describe('sortedStrings', () => {
     test('sorts strings with localeCompare, returns a new frozen array, does not mutate input', () => {
       const out = sortedStrings(STRINGS_INPUT)
@@ -73,21 +79,26 @@ describe('determinism helpers', () => {
     })
   })
 
-  // sortedUniqBy contract: keep first by key then sort deterministically, return frozen copy
   describe('sortedUniqBy', () => {
     test('keeps first occurrence by key and returns frozen sorted output', () => {
       const out = sortedUniqBy(
         UNIQ_BY_ID_INPUT,
-        it => it.id,
-        (x, y) => x.id.localeCompare(y.id),
+        item => item.id,
+        (a, b) => a.id.localeCompare(b.id),
       )
 
-      expect(out).toEqual(UNIQ_BY_ID_SORTED)
-      expect(out).not.toBe(UNIQ_BY_ID_INPUT)
-      assertFrozen(out)
+      expectFrozenCopy(
+        out,
+        UNIQ_BY_ID_INPUT,
+        UNIQ_BY_ID_SORTED,
+        UNIQ_BY_ID_INPUT_UNCHANGED,
+      )
 
-      // Input not mutated (length is a simple, intention-revealing check here)
-      expect(UNIQ_BY_ID_INPUT.length).toBe(5)
+      // First occurrence wins: later duplicates must not replace earlier values
+      expect(out).toContainEqual({ id: 'a', v: 10 })
+      expect(out).toContainEqual({ id: 'b', v: 1 })
+      expect(out).not.toContainEqual({ id: 'a', v: 777 })
+      expect(out).not.toContainEqual({ id: 'b', v: 999 })
     })
   })
 })

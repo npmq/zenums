@@ -20,10 +20,21 @@ const GOLDEN_CASES = [
   { value: 'FooBar', constantKey: 'FOO_BAR', nameKey: 'FooBar' },
   { value: 'HttpRequest', constantKey: 'HTTP_REQUEST', nameKey: 'HttpRequest' },
   { value: 'HTTPRequest', constantKey: 'HTTP_REQUEST', nameKey: 'HttpRequest' },
+  { value: 'userID', constantKey: 'USER_ID', nameKey: 'UserId' },
   {
     value: 'XMLHttpRequest',
     constantKey: 'XML_HTTP_REQUEST',
     nameKey: 'XmlHttpRequest',
+  },
+  {
+    value: 'OAuth2Token',
+    constantKey: 'O_AUTH2_TOKEN',
+    nameKey: 'OAuth2Token',
+  },
+  {
+    value: 'version2API',
+    constantKey: 'VERSION2_API',
+    nameKey: 'Version2Api',
   },
 
   // digits inside
@@ -48,7 +59,10 @@ const DIAGNOSTIC_VALUES = [
   'FooBar',
   'HttpRequest',
   'HTTPRequest',
+  'userID',
   'XMLHttpRequest',
+  'OAuth2Token',
+  'version2API',
   'user1',
   'one2Point',
   'a2',

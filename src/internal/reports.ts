@@ -31,10 +31,18 @@ const byCollisionKey = (a: CollisionItem, b: CollisionItem) =>
   a.key.localeCompare(b.key)
 
 const byInvalid = (a: InvalidEntry, b: InvalidEntry) =>
-  a.index !== b.index ? a.index - b.index : a.code.localeCompare(b.code)
+  a.index === b.index ? a.code.localeCompare(b.code) : a.index - b.index
 
 const byDuplicate = (a: DuplicateEntry, b: DuplicateEntry) =>
   a.value.localeCompare(b.value)
+
+function formatCollisionsStat(stats: RejectedStats): string {
+  if (stats.collisions.total === 0) {
+    return '0'
+  }
+
+  return `${stats.collisions.total} (constants: ${stats.collisions.constants}, names: ${stats.collisions.names})`
+}
 
 function invalidMessage(it: InvalidEntry): string {
   switch (it.code) {
@@ -135,7 +143,8 @@ function pushCollisionSection(
 }
 
 /**
- * Builds stable human-readable lines for the aggregated definitionRejected error.
+ * Builds stable human-readable lines for the aggregated definitionRejected error
+ *
  * Deterministic output: sorted invalids/duplicates + collision keys/sources for stable logs & snapshots
  */
 export const buildDefinitionRejectedDetails = (
@@ -152,14 +161,7 @@ export const buildDefinitionRejectedDetails = (
   lines.push(TPL.stat('valid', stats.valid))
   lines.push(TPL.stat('invalid', stats.invalid))
   lines.push(TPL.stat('duplicates', stats.duplicates))
-  lines.push(
-    TPL.stat(
-      'collisions',
-      stats.collisions.total > 0
-        ? `${stats.collisions.total} (constants: ${stats.collisions.constants}, names: ${stats.collisions.names})`
-        : '0',
-    ),
-  )
+  lines.push(TPL.stat('collisions', formatCollisionsStat(stats)))
 
   const hasAnything =
     report.invalid.length > 0 ||

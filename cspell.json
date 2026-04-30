@@ -24,6 +24,10 @@
     "snake",
     "pascal",
     "camelcase",
+    "uppercases",
+
+    "SNAKECASE",
+    "HTTPREQUEST",
 
     "stdout",
     "stderr"

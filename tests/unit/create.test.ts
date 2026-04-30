@@ -11,10 +11,25 @@ import {
 // Contract fixtures: stable inputs/outputs for createEnum orchestration
 // Purpose: keep tests intention-revealing and resistant to refactors
 
+type CountRow = readonly [label: string, value: number]
+type StatRow = readonly [label: string, stat: number, expected: number]
+
 const DEFINITION_REJECTED_CODE = 'definitionRejected' as const
 const INVALID_VALUE_CODE = 'invalidValue' as const
 
 const OK_VALUES = Object.freeze(['foo-bar', 'stdout', 'API2'] as const)
+
+const EXPECTED_CONSTANTS = Object.freeze({
+  FOO_BAR: 'foo-bar',
+  STDOUT: 'stdout',
+  API2: 'API2',
+} as const)
+
+const EXPECTED_NAMES = Object.freeze({
+  FooBar: 'foo-bar',
+  Stdout: 'stdout',
+  API2: 'API2',
+} as const)
 
 // Collisions by transforms (names/constants): foo-bar and foo_bar normalize to the same keys
 const WITH_COLLISION = Object.freeze(['foo-bar', 'foo_bar'] as const)
@@ -48,20 +63,29 @@ describe('createEnum', () => {
     // Top-level shape
     expect(E.values).toEqual(OK_VALUES)
 
-    // Record mapping uses transforms; verify via transforms to avoid hardcoding too much
-    for (const v of OK_VALUES) {
-      expect(E.constants[toConstKey(v)]).toBe(v)
-      expect(E.names[toNameKey(v)]).toBe(v)
+    // Public records should expose the exact generated keys for this fixture
+    expect({ ...E.constants }).toEqual(EXPECTED_CONSTANTS)
+    expect({ ...E.names }).toEqual(EXPECTED_NAMES)
+
+    // Runtime transforms should produce keys that exist in public records
+    for (const value of OK_VALUES) {
+      const constantKey = toConstKey(value)
+      const nameKey = toNameKey(value)
+
+      expect(Object.hasOwn(E.constants, constantKey)).toBe(true)
+      expect(Object.hasOwn(E.names, nameKey)).toBe(true)
     }
 
     // Helpers contract
     expect(E.is('stdout')).toBe(true)
     expect(E.is('nope')).toBe(false)
+    expect(E.is(123)).toBe(false)
+    expect(E.is(null)).toBe(false)
 
     expect(E.parse('stdout')).toBe('stdout')
 
     // withValues contract: passes the typed tuple through
-    const got = E.withValues(vals => vals)
+    const got = E.withValues(values => values)
     expect(got).toBe(E.values)
 
     // Security contract: prototype-less records (prevents "__proto__" pitfalls)
@@ -77,7 +101,7 @@ describe('createEnum', () => {
   })
 
   describe('parse', () => {
-    test('throws invalidValue with expected list (preserves author order)', () => {
+    test('throws invalidValue with expected list for unknown string', () => {
       const E = createEnum(OK_VALUES)
 
       const e = zenumsExpect.mustThrow(
@@ -86,7 +110,18 @@ describe('createEnum', () => {
         { receivedType: 'string', expected: OK_VALUES },
       )
 
-      expect(String(e.context.value)).toBe('nope')
+      expect(e.context.value).toBe('nope')
+    })
+
+    test('throws invalidValue with received type for non-string input', () => {
+      const E = createEnum(OK_VALUES)
+
+      const e = zenumsExpect.mustThrow(() => E.parse(123), INVALID_VALUE_CODE, {
+        receivedType: 'number',
+        expected: OK_VALUES,
+      })
+
+      expect(e.context.value).toBe(123)
     })
   })
 
@@ -102,14 +137,14 @@ describe('createEnum', () => {
       expectTextContainsAll(text, REJECTED_NEEDLES)
       expectTextContainsAll(text, COLLISION_SECTION_NEEDLES)
 
-      // minimal contract: collisions exist for both kinds
+      // Minimal contract: collisions must exist for both generated key kinds
       const gt0 = [
         ['collisions.constants', e.context.report.collisions.constants.length],
         ['collisions.names', e.context.report.collisions.names.length],
-      ] as const
+      ] as const satisfies readonly CountRow[]
 
-      for (const [label, n] of gt0) {
-        expect(n, label).toBeGreaterThan(0)
+      for (const [label, value] of gt0) {
+        expect(value, label).toBeGreaterThan(0)
       }
     })
 
@@ -126,10 +161,10 @@ describe('createEnum', () => {
       const eq0 = [
         ['collisions.constants', report.collisions.constants.length],
         ['collisions.names', report.collisions.names.length],
-      ] as const
+      ] as const satisfies readonly CountRow[]
 
-      for (const [label, n] of eq0) {
-        expect(n, label).toBe(0)
+      for (const [label, value] of eq0) {
+        expect(value, label).toBe(0)
       }
 
       const text = toText(e.context.details)
@@ -155,10 +190,10 @@ describe('createEnum', () => {
         ['duplicates', report.duplicates.length],
         ['collisions.constants', report.collisions.constants.length],
         ['collisions.names', report.collisions.names.length],
-      ] as const
+      ] as const satisfies readonly CountRow[]
 
-      for (const [label, n] of gt0) {
-        expect(n, label).toBeGreaterThan(0)
+      for (const [label, value] of gt0) {
+        expect(value, label).toBeGreaterThan(0)
       }
 
       const statPairs = [
@@ -174,10 +209,10 @@ describe('createEnum', () => {
           stats.collisions.names,
           report.collisions.names.length,
         ],
-      ] as const
+      ] as const satisfies readonly StatRow[]
 
-      for (const [label, stat, len] of statPairs) {
-        expect(stat, `${label} stat`).toBe(len)
+      for (const [label, stat, expected] of statPairs) {
+        expect(stat, `${label} stat`).toBe(expected)
       }
 
       const text = toText(details)

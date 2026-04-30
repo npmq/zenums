@@ -18,7 +18,13 @@ Install dependencies:
 bun install
 ```
 
-Useful commands:
+Run the full local verification suite:
+
+```bash
+bun run verify
+```
+
+Useful individual commands:
 
 ```bash
 bun run build

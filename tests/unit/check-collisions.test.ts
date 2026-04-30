@@ -70,8 +70,8 @@ function buildKeyMap(
   return map
 }
 
-// Finds any collided key (first hit) from the same map we pass into checkCollisions
-// Returns null if there are no collisions (used only inside mustThrow assertions)
+// Finds any collided key from the same map we pass into checkCollisions
+// Returns null if there are no collisions
 function firstCollidedKey(
   keyMap: ReadonlyMap<string, readonly string[]>,
 ): string | null {
@@ -82,6 +82,21 @@ function firstCollidedKey(
   }
 
   return null
+}
+
+// Returns only sources that actually participate in collisions
+function collidedSources(
+  keyMap: ReadonlyMap<string, readonly string[]>,
+): readonly string[] {
+  const sources: string[] = []
+
+  for (const [, items] of keyMap) {
+    if (items.length > 1) {
+      sources.push(...items)
+    }
+  }
+
+  return Object.freeze(sources)
 }
 
 // Assertions: keep tests scenario-style and validate error details
@@ -99,8 +114,8 @@ const collision = {
     expect(collidedKey).not.toBeNull()
     expect(detailsText).toContain(`Key '${collidedKey}'`)
 
-    // All original values should be present in the error details
-    for (const value of values) {
+    // Only collided sources are part of collision diagnostics
+    for (const value of collidedSources(keyMap)) {
       expect(detailsText).toContain(value)
     }
   },
@@ -172,6 +187,9 @@ const MULTI_COLLISION_CONSTANTS = caseOf(
   'fooBar',
 )
 
+// Mixed scenario: collision sources + safe value in the same input
+const MIXED_COLLISION_CONSTANTS = caseOf('foo-bar', 'foo_bar', 'API2')
+
 describe('checkCollisions', () => {
   describe('curated suites', () => {
     forEachKind(kind => {
@@ -215,7 +233,7 @@ describe('checkCollisions', () => {
     })
   })
 
-  // Reporting: ensure error details contain multiple collided keys when present
+  // Reporting: ensure error details contain precise collided keys/sources
   describe('reporting', () => {
     test('reports multiple collisions (constants)', () => {
       const kind: EnumKeyKind = 'constants'
@@ -224,9 +242,27 @@ describe('checkCollisions', () => {
       const err = capture.mustThrow(() => checkCollisions(kind, keyMap))
       const e = zenumsExpect.thrownError(err, 'collision', { kind })
 
+      expect(e.context.count).toBe(2)
+      expect(e.context.collisions).toHaveLength(2)
+
       const text = e.context.details.join('\n')
       expect(text).toContain("Key 'FOO'")
       expect(text).toContain("Key 'FOO_BAR'")
+    })
+
+    test('reports only collided sources and omits safe values', () => {
+      const kind: EnumKeyKind = 'constants'
+      const keyMap = buildKeyMap(kind, MIXED_COLLISION_CONSTANTS)
+
+      const err = capture.mustThrow(() => checkCollisions(kind, keyMap))
+      const e = zenumsExpect.thrownError(err, 'collision', { kind })
+
+      const text = e.context.details.join('\n')
+
+      expect(text).toContain("Key 'FOO_BAR'")
+      expect(text).toContain("'foo-bar'")
+      expect(text).toContain("'foo_bar'")
+      expect(text).not.toContain("'API2'")
     })
   })
 })

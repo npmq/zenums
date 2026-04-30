@@ -7,6 +7,10 @@ function ok(step) {
   console.log(`✓ ${step}`)
 }
 
+function assertPublicSurface(module, expectedExports) {
+  strict.deepEqual(Object.keys(module).sort(), [...expectedExports].sort())
+}
+
 // 1) CJS require works
 {
   const { createEnum } = require('../dist/index.cjs')
@@ -29,29 +33,39 @@ function ok(step) {
   ok('ESM import: createEnum works')
 }
 
-// 2.1) Public surface sanity
+// 3) Public surface sanity
 {
-  const m = await import('../dist/index.mjs')
+  const cjs = require('../dist/index.cjs')
+  const esm = await import('../dist/index.mjs')
 
-  strict.equal(typeof m.createEnum, 'function')
-  strict.equal(typeof m.toConstKey, 'function')
-  strict.equal(typeof m.toNameKey, 'function')
+  const expectedExports = [
+    'ZenumsError',
+    'createEnum',
+    'toConstKey',
+    'toNameKey',
+  ]
 
-  strict.equal('toEnumKeys' in m, false)
+  assertPublicSurface(cjs, expectedExports)
+  assertPublicSurface(esm, expectedExports)
 
   ok('Public API: only intended exports are exposed')
 }
 
-// 3) zod subpath loads (must not crash on import)
+// 4) zod subpath loads in CJS + ESM
 {
-  const m = await import('../dist/zod.mjs')
+  const cjs = require('../dist/zod.cjs')
+  const esm = await import('../dist/zod.mjs')
 
-  strict.equal(typeof m.toZodEnum, 'function')
+  strict.equal(typeof cjs.toZodEnum, 'function')
+  strict.equal(typeof esm.toZodEnum, 'function')
 
-  ok('Subpath ./zod: module loads')
+  assertPublicSurface(cjs, ['toZodEnum'])
+  assertPublicSurface(esm, ['toZodEnum'])
+
+  ok('Subpath ./zod: CJS/ESM modules load')
 }
 
-// 4) If zod is available, toZodEnum works (optional peer)
+// 5) If zod is available, toZodEnum works (optional peer)
 try {
   const z = await import('zod')
   const { toZodEnum } = await import('../dist/zod.mjs')

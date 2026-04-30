@@ -12,6 +12,7 @@ export default defineConfig({
   target: 'es2022',
   platform: 'neutral',
 
+  bundle: true,
   dts: true,
   clean: true,
   sourcemap: false,

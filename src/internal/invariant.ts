@@ -9,7 +9,7 @@ export function invariant(condition: unknown, text: string): asserts condition {
   throwEnumError({ code: 'internalInvariant', text })
 }
 
-/** Exhaustiveness helper for impossible branches (switch/default, unions) */
+/** Exhaustiveness helper for impossible branches */
 export function invariantNever(value: never, text: string): never {
   throwEnumError({
     code: 'internalInvariant',

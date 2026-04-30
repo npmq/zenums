@@ -1,14 +1,20 @@
 import { throwEnumError } from './errors'
 import { prepareDefinition } from './internal/rejected'
 import { toEnumKeys } from './internal/transforms'
-import type { EnumObject, EnumRecord, EnumValue, EnumValues } from './types'
+import type {
+  EnumConstants,
+  EnumObject,
+  EnumRecord,
+  EnumValue,
+  EnumValues,
+} from './types'
 
 // Creates a prototype-less dictionary to avoid "__proto__" and similar pitfalls
 function makeDict<V extends string>(): Record<string, V> {
   return Object.create(null) as Record<string, V>
 }
 
-// Creates both builders with proper value narrowing for a single typed boundary
+// Creates both mutable builders while keeping values narrowed to the enum union
 function makeEnumBuilders<T extends EnumValues>(): Readonly<{
   constantsBuilder: Record<string, EnumValue<T>>
   namesBuilder: Record<string, EnumValue<T>>
@@ -32,13 +38,13 @@ function addPair<T extends EnumValues>(
   namesBuilder[nameKey] = value
 }
 
-// Freezes both records and narrows them to EnumRecord at a single type boundary
+// Freezes generated key records and applies the runtime-to-type boundary once
 function freezeEnumRecords<T extends EnumValues>(
   constantsBuilder: Record<string, EnumValue<T>>,
   namesBuilder: Record<string, EnumValue<T>>,
-): Readonly<{ constants: EnumRecord<T>; names: EnumRecord<T> }> {
+): Readonly<{ constants: EnumConstants<T>; names: EnumRecord<T> }> {
   return Object.freeze({
-    constants: Object.freeze(constantsBuilder) as EnumRecord<T>,
+    constants: Object.freeze(constantsBuilder) as EnumConstants<T>,
     names: Object.freeze(namesBuilder) as EnumRecord<T>,
   })
 }

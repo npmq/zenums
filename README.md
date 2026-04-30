@@ -1,26 +1,57 @@
 # zenums [![CI](https://github.com/npmq/zenums/actions/workflows/ci.yml/badge.svg)](https://github.com/npmq/zenums/actions/workflows/ci.yml)
 
-Type-safe enum creation for TypeScript and Zod — stop duplicating your enums.
+Type-safe enum creation for TypeScript and Zod — without duplicating enum values.
 
-**zenums** turns a tuple of string literals into a small, frozen enum-like object:
+**zenums** turns one tuple of string literals into a small, frozen enum-like object with:
 
-- `values` — the original tuple (single source of truth)
-- `constants` — CONSTANT_CASE keys
-- `names` — PascalCase keys
-- `is(value)` — type guard
-- `parse(value)` — runtime parser for a single value (throws `ZenumsError`)
-- `withValues(fn)` — runs `fn(values)` without copying
+- preserved `values` as the single source of truth
+- generated `constants` keys
+- generated `names` keys
+- runtime validation helpers
+- type narrowing through `is()` and `parse()`
+- deterministic diagnostics for invalid definitions
+- optional Zod integration through `zenums/zod`
 
-It also supports **optional** Zod integration via a small subpath export.
+```ts
+import { createEnum } from 'zenums'
+
+const Transport = createEnum(['stdout', 'stderr', 'API2'] as const)
+
+Transport.values
+// readonly ['stdout', 'stderr', 'API2']
+
+Transport.constants.STDOUT
+// 'stdout'
+
+Transport.names.Stdout
+// 'stdout'
+
+Transport.is('stdout')
+// true
+
+Transport.parse('stderr')
+// 'stderr'
+```
+
+---
 
 ## Why zenums?
 
-Use `zenums` when you want one tuple to remain the single source of truth for:
+Use `zenums` when you want one tuple to be the single source of truth for:
 
 - literal union types
 - runtime enum-like access
 - stable generated keys
+- type-safe parsing
 - Zod schemas without redefining values
+
+Instead of maintaining duplicated values across TypeScript unions, runtime objects, and validation schemas, define the values once:
+
+```ts
+const VALUES = ['stdout', 'stderr', 'API2'] as const
+```
+
+Then reuse the same tuple everywhere.
 
 ---
 
@@ -28,8 +59,17 @@ Use `zenums` when you want one tuple to remain the single source of truth for:
 
 ```bash
 npm i zenums
+```
 
-# optional, only if you use zenums/zod
+For beta versions:
+
+```bash
+npm i zenums@beta
+```
+
+Optional Zod integration requires `zod` in the consumer project:
+
+```bash
 npm i zod
 ```
 
@@ -45,154 +85,475 @@ const Transport = createEnum(['stdout', 'stderr', 'API2'] as const)
 type TransportValue = (typeof Transport.values)[number]
 // 'stdout' | 'stderr' | 'API2'
 
-// tuple values (single source of truth, preserved as authored)
 Transport.values
-// => ['stdout', 'stderr', 'API2']
+// readonly ['stdout', 'stderr', 'API2']
 
-// constants + names
-Transport.constants.STDOUT // 'stdout'
-Transport.names.Stdout     // 'stdout'
+Transport.constants.STDOUT
+// 'stdout'
 
-// type guard
-if (Transport.is('stdout')) {
-  // 'stdout' is narrowed to the literal union
-}
+Transport.constants.STDERR
+// 'stderr'
 
-// parser (throws ZenumsError, code: 'invalidValue')
-Transport.parse('nope')
+Transport.constants.API2
+// 'API2'
+
+Transport.names.Stdout
+// 'stdout'
+
+Transport.names.Stderr
+// 'stderr'
+
+Transport.names.API2
+// 'API2'
 ```
+
+---
+
+## Type narrowing
+
+`is(value)` works as a type guard.
+
+```ts
+import { createEnum } from 'zenums'
+
+const Transport = createEnum(['stdout', 'stderr', 'API2'] as const)
+
+declare const input: string
+
+if (Transport.is(input)) {
+  input
+  // ^? 'stdout' | 'stderr' | 'API2'
+}
+```
+
+`parse(value)` returns the narrowed value or throws `ZenumsError`.
+
+```ts
+import { createEnum } from 'zenums'
+
+const Transport = createEnum(['stdout', 'stderr', 'API2'] as const)
+
+const value = Transport.parse('stdout')
+//    ^? 'stdout' | 'stderr' | 'API2'
+
+Transport.parse('nope')
+// throws ZenumsError with code: 'invalidValue'
+```
+
+This is useful at runtime boundaries:
+
+```ts
+import { createEnum } from 'zenums'
+
+const Channel = createEnum(['email', 'sms', 'push'] as const)
+
+function handleChannel(input: unknown) {
+  const channel = Channel.parse(input)
+
+  // channel is now narrowed to:
+  // 'email' | 'sms' | 'push'
+
+  return channel
+}
+```
+
+---
+
+## What createEnum returns
+
+```ts
+const E = createEnum(['foo-bar', 'stdout', 'API2'] as const)
+```
+
+`E` contains:
+
+```ts
+E.values
+// original tuple, preserved as authored
+
+E.constants
+// prototype-less frozen record with CONSTANT_CASE keys
+
+E.names
+// prototype-less frozen record with PascalCase keys
+
+E.is(value)
+// type guard
+
+E.parse(value)
+// parser that returns the narrowed value or throws ZenumsError
+
+E.withValues(fn)
+// passes the original values tuple to fn without copying
+```
+
+The returned object and its public blocks are frozen.
+
+---
+
+## Type narrowing note
+
+`zenums` keeps the original tuple as the source of truth, so the most reliable union type is derived from `values`:
+
+```ts
+import { createEnum } from 'zenums'
+
+export const inputChannelContract = createEnum([
+  'args',
+  'process',
+  'object',
+] as const)
+
+export type InputChannel = (typeof inputChannelContract.values)[number]
+// 'args' | 'process' | 'object'
+```
+
+When you need a single literal type from the generated object, use `constants`. Constants are strongly typed by their generated keys and preserve the exact literal value:
+
+```ts
+export const INPUT_CHANNELS = inputChannelContract.constants
+
+export type DefaultInputChannel = typeof INPUT_CHANNELS.ARGS
+// 'args'
+```
+
+`names` are useful for PascalCase runtime access, but they are not the recommended source for single-value type extraction right now. Prefer `values` for unions and `constants` for narrowed single-value types.
+
+---
+
+## Type inference
+
+Use `values` when you need the full literal union:
+
+```ts
+import { createEnum } from 'zenums'
+
+const InputChannel = createEnum(['args', 'process', 'object'] as const)
+
+type InputChannelValue = (typeof InputChannel.values)[number]
+// 'args' | 'process' | 'object'
+```
+
+Use `constants` when you need a specific narrowed literal type:
+
+```ts
+const INPUT_CHANNELS = InputChannel.constants
+
+type DefaultInputChannel = typeof INPUT_CHANNELS.ARGS
+// 'args'
+```
+
+This is useful when a config contract needs a default value type that must stay connected to the enum source of truth:
+
+```ts
+export const inputChannelContract = createEnum(['args', 'process', 'object'] as const)
+
+export const INPUT_CHANNELS = inputChannelContract.constants
+
+export type InputChannel = (typeof inputChannelContract.values)[number]
+export type DefaultInputChannel = typeof INPUT_CHANNELS.ARGS
+```
+
+`names` are intended for ergonomic runtime access. For single-value type extraction, prefer `constants`, because constants provide the most predictable narrowed literal typing across TypeScript versions.
 
 ---
 
 ## Key generation
 
-`zenums` derives two stable key spaces from your **string values**:
+`zenums` derives two stable key spaces from your string values:
 
-- `constants`: `SCREAMING_SNAKE_CASE` keys for safe, ergonomic imports
-- `names`: `PascalCase` keys for “nice” programmatic access
+- `constants`: `SCREAMING_SNAKE_CASE`
+- `names`: `PascalCase`
 
 ```ts
 import { createEnum } from 'zenums'
 
-const Transport = createEnum(['foo-bar', 'stdout', 'API2'] as const)
+const Example = createEnum(['foo-bar', 'stdout', 'API2'] as const)
 
-// values stay exactly as authored (order preserved)
-Transport.values  // ['foo-bar', 'stdout', 'API2']
+Example.values
+// readonly ['foo-bar', 'stdout', 'API2']
 
-// constants: uppercase, separators normalized to underscore
-Transport.constants.FOO_BAR  // 'foo-bar'
-Transport.constants.STDOUT   // 'stdout'
-Transport.constants.API2     // 'API2'
+Example.constants.FOO_BAR
+// 'foo-bar'
 
-// names: PascalCase (separators are word breaks)
-Transport.names.FooBar       // 'foo-bar'
-Transport.names.Stdout       // 'stdout'
-Transport.names.API2         // 'API2'
+Example.constants.STDOUT
+// 'stdout'
+
+Example.constants.API2
+// 'API2'
+
+Example.names.FooBar
+// 'foo-bar'
+
+Example.names.Stdout
+// 'stdout'
+
+Example.names.API2
+// 'API2'
 ```
 
-### Tricky examples and collisions
-
-Some different inputs can generate the **same keys** after normalization:
+Separators are normalized:
 
 ```ts
-createEnum(['foo-bar', 'foo_bar'] as const)
-// ❌ throws: collision (both produce FOO_BAR / FooBar)
+import { createEnum } from 'zenums'
+
+const Example = createEnum(['foo-bar', 'user_id'] as const)
+
+Example.constants.FOO_BAR
+// 'foo-bar'
+
+Example.constants.USER_ID
+// 'user_id'
+
+Example.names.FooBar
+// 'foo-bar'
+
+Example.names.UserId
+// 'user_id'
 ```
 
-Other “edge” but valid examples:
+CamelCase and PascalCase are split into readable keys:
 
 ```ts
-const ValidExample = createEnum(['r2d2', 'api2', 'my_value'] as const)
+import { createEnum } from 'zenums'
 
-ValidExample.constants.R2D2     // 'r2d2'
-ValidExample.names.R2d2         // 'r2d2'
+const Example = createEnum(['fooBar', 'HttpRequest', 'XMLHttpRequest'] as const)
 
-ValidExample.constants.API2     // 'api2'
-ValidExample.names.Api2         // 'api2'
+Example.constants.FOO_BAR
+// 'fooBar'
 
-ValidExample.constants.MY_VALUE // 'my_value'
-ValidExample.names.MyValue      // 'my_value'
+Example.constants.HTTP_REQUEST
+// 'HttpRequest'
+
+Example.constants.XML_HTTP_REQUEST
+// 'XMLHttpRequest'
+
+Example.names.FooBar
+// 'fooBar'
+
+Example.names.HttpRequest
+// 'HttpRequest'
+
+Example.names.XmlHttpRequest
+// 'XMLHttpRequest'
 ```
 
-If you need the generated keys for debugging, you can call `toConstKey(value)` / `toNameKey(value)` directly.
+CAPS+digits tokens are preserved:
 
-### Input rules
+```ts
+import { createEnum } from 'zenums'
 
-`createEnum()` validates values before generating keys.
+const Example = createEnum(['API2', 'R2D2', 'HTTP2'] as const)
 
-Rules are enforced to keep generated keys deterministic, readable, and collision-safe.
+Example.constants.API2
+// 'API2'
 
-Summary:
+Example.names.API2
+// 'API2'
 
-- **Array shape:** non-empty array
-- **Type:** each item must be a string
-- **Length:** at least 2 characters
-- **Allowed chars:** `A–Z`, `a–z`, `0–9`, `-`, `_`
-- **Separators:** either `-` *or* `_` (not both), no leading/trailing separators, no double separators (`--`, `__`)
-- **Digits:** must not start with a digit, must not be numeric-only (even with separators like `1-2`)
-- **Meaningful:** must contain at least one letter
-- **CAPS tokens:** `ALL_CAPS` without digits is rejected, but `API2` / `R2D2` are allowed
-- **Duplicates:** exact duplicate strings are rejected (no normalization)
+Example.constants.R2D2
+// 'R2D2'
 
-When multiple issues exist, `createEnum()` throws a `ZenumsError` with code `definitionRejected` and a deterministic report.
+Example.names.R2D2
+// 'R2D2'
+```
+
+If you need to inspect generated keys directly:
+
+```ts
+import { toConstKey, toNameKey } from 'zenums'
+
+toConstKey('foo-bar')
+// 'FOO_BAR'
+
+toNameKey('foo-bar')
+// 'FooBar'
+```
 
 ---
 
-## Zod integration (optional)
+## Collision safety
 
-Requires `zod` to be installed in the consumer project.
+Different values can normalize to the same generated key.
 
-If you use Zod, `zenums/zod` provides a thin wrapper over `z.enum()` that preserves tuple literal types.
-Return type is inferred for **Zod v3 / v4** compatibility.
+```ts
+import { createEnum } from 'zenums'
+
+createEnum(['foo-bar', 'foo_bar'] as const)
+// throws ZenumsError with code: 'definitionRejected'
+```
+
+Both values would generate:
+
+```ts
+constants.FOO_BAR
+names.FooBar
+```
+
+So `zenums` rejects the definition instead of silently overwriting data.
+
+This is intentional. A valid enum definition must produce stable, unique keys.
+
+---
+
+## Input rules
+
+`createEnum()` validates values before generating keys.
+
+Rules are designed to keep generated keys deterministic, readable, and collision-safe.
+
+Summary:
+
+- input must be a non-empty array
+- each item must be a string
+- each value must be at least 2 characters
+- allowed characters: `A–Z`, `a–z`, `0–9`, `-`, `_`
+- use either `-` or `_`, not both in the same value
+- no leading or trailing separators
+- no repeated separators like `--` or `__`
+- values must not start with a digit
+- values must not be numeric-only, including separated numeric values like `1-2`
+- values must contain at least one letter
+- `ALL_CAPS` without digits is rejected
+- `API2`, `R2D2`, `HTTP2` are allowed
+- exact duplicate strings are rejected before key collision checks
+
+Valid examples:
+
+```ts
+createEnum(['foo-bar', 'utf-8'] as const)
+createEnum(['foo_bar', 'user1'] as const)
+createEnum(['fooBar', 'one2Point'] as const)
+createEnum(['FooBar', 'HttpRequest'] as const)
+createEnum(['API2', 'R2D2', 'HTTP2'] as const)
+```
+
+Invalid examples:
+
+```ts
+createEnum([])
+// emptyArray
+
+createEnum(['a'] as const)
+// tooShort
+
+createEnum(['foo@bar'] as const)
+// invalidChars
+
+createEnum(['foo-_bar'] as const)
+// mixedSeparatorStyles
+
+createEnum(['-foo'] as const)
+// badSeparatorPlacement
+
+createEnum(['123'] as const)
+// numericOnly
+
+createEnum(['1foo'] as const)
+// startsWithDigit
+
+createEnum(['foo_Bar'] as const)
+// separatedMustBeLowercase
+
+createEnum(['HTTP'] as const)
+// capsOnly
+
+createEnum(['foo', 'foo'] as const)
+// duplicate
+```
+
+---
+
+## Zod integration
+
+Zod support is optional.
+
+If you use Zod, import the adapter from `zenums/zod`:
 
 ```ts
 import * as z from 'zod'
 import { createEnum } from 'zenums'
 import { toZodEnum } from 'zenums/zod'
 
-const Transport = createEnum(['stdout', 'stderr'] as const)
-const Schema = toZodEnum(z, Transport.values)
+const Transport = createEnum(['stdout', 'stderr', 'API2'] as const)
 
-Schema.parse('stdout') // ok
-Schema.safeParse('nope').success // false
+const TransportSchema = toZodEnum(z, Transport.values)
+
+TransportSchema.parse('stdout')
+// 'stdout'
+
+TransportSchema.safeParse('nope').success
+// false
 ```
 
-You can also skip the wrapper and use Zod directly:
+The adapter is a thin wrapper over `z.enum()` and preserves tuple literal types.
+
+The return type is inferred to stay compatible with supported Zod versions.
+
+You can also use Zod directly:
 
 ```ts
 import * as z from 'zod'
 import { createEnum } from 'zenums'
 
-const VALUES = ['stdout', 'stderr'] as const
-const Transport = createEnum(VALUES)
+const VALUES = ['stdout', 'stderr', 'API2'] as const
 
-const SchemaA = z.enum(Transport.values) // recommended
-const SchemaB = z.nativeEnum(Transport.constants) // optional
+const Transport = createEnum(VALUES)
+const TransportSchema = z.enum(Transport.values)
 ```
 
-In general, `z.enum(Transport.values)` is the most predictable for string-literal unions and error messages.
+For most cases, `z.enum(Transport.values)` is the most predictable option because it uses the original tuple values exactly as authored.
 
 ---
 
 ## Source of truth workflow
 
-Keep your tuple as the single source of truth and reuse it for both `createEnum()` and `z.enum()`.
+Recommended pattern:
 
 ```ts
 import * as z from 'zod'
 import { createEnum } from 'zenums'
 
-const VALUES = ['stdout', 'stderr'] as const // 1) source tuple
+const TRANSPORT_VALUES = ['stdout', 'stderr', 'API2'] as const
 
-const Status = createEnum(VALUES) // 2) runtime utilities
-const StatusSchema = z.enum(Status.values) // 3) validation schema, same tuple reused
+export const Transport = createEnum(TRANSPORT_VALUES)
+
+export type TransportValue = (typeof Transport.values)[number]
+
+export const TransportSchema = z.enum(Transport.values)
 ```
+
+Now the same tuple powers:
+
+```ts
+TransportValue
+// TypeScript union
+
+Transport.constants
+// ergonomic runtime constants
+
+Transport.names
+// PascalCase runtime names
+
+Transport.is(value)
+// type guard
+
+Transport.parse(value)
+// runtime parser
+
+TransportSchema
+// Zod schema
+```
+
+No duplicated enum values.
 
 ---
 
-## Aggregated report
+## Aggregated reports
 
-When multiple issues exist, `createEnum()` throws a `ZenumsError` with code `definitionRejected` and a deterministic report.
+When multiple issues exist, `createEnum()` throws a `ZenumsError` with code `definitionRejected`.
+
+The error includes a deterministic report designed for logs, tests, and debugging.
 
 ```ts
 import { createEnum } from 'zenums'
@@ -200,7 +561,7 @@ import { createEnum } from 'zenums'
 createEnum(['foo', 'foo', 'foo-bar', 'foo_bar', 'a'] as const)
 ```
 
-Example output (formatted for logs and snapshots):
+Example formatted output:
 
 ```text
 ZenumsError: Enum definition rejected.
@@ -232,18 +593,60 @@ Collisions (names):
 
 ---
 
+## Error handling
+
+```ts
+import { createEnum, ZenumsError } from 'zenums'
+
+const Transport = createEnum(['stdout', 'stderr'] as const)
+
+try {
+  Transport.parse('nope')
+} catch (error) {
+  if (error instanceof ZenumsError) {
+    error.code
+    // 'invalidValue'
+
+    error.context
+    // typed error context
+  }
+}
+```
+
+Possible error codes include validation errors, collision errors, invalid runtime values, and internal invariant errors.
+
+---
+
 ## Runtime support
 
-`zenums` is runtime-agnostic and works in both **Node.js (>=20)** and **Bun**.
+`zenums` works in:
 
-Note: the project uses **Bun** for development/CI (`bun test`, `bun run build`), but the published package is plain ESM/CJS and does not require Bun at runtime.
+- Node.js `>=20`
+- Bun
+- modern ESM/CJS-compatible tooling
+
+The package is published as plain JavaScript with both ESM and CJS builds.
+
+Bun is used for development and tests, but Bun is not required at runtime.
 
 ---
 
 ## Public API
 
+Main entry:
+
 ```ts
-import { createEnum, toConstKey, toNameKey, ZenumsError } from 'zenums'
+import {
+  createEnum,
+  toConstKey,
+  toNameKey,
+  ZenumsError,
+} from 'zenums'
+```
+
+Zod subpath:
+
+```ts
 import { toZodEnum } from 'zenums/zod'
 ```
 

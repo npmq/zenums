@@ -14,6 +14,7 @@ type InvalidCases = Readonly<{
 type InvalidChars = Readonly<{
   value: string
   invalidChar: string
+  position: number
 }>
 
 const CAPS_DIGITS_OK = caseOf('R2D2', 'API2', 'AB12')
@@ -25,6 +26,13 @@ const VALID_CASES = [
   caseOf('foo_bar', 'user1'),
   caseOf('fooBar', 'one2Point'),
   caseOf('FooBar', 'HttpRequest'),
+  caseOf(
+    'HTTPRequest',
+    'XMLHttpRequest',
+    'userID',
+    'OAuth2Token',
+    'version2API',
+  ),
   CAPS_DIGITS_OK,
   caseOf('a2', 'z9'),
 ] as const satisfies readonly ValuesCase[]
@@ -34,21 +42,21 @@ const SINGLE_VALUES = {
   MIN_OK: caseOf('aa', 'a0', 'k2'),
 } as const
 
-// invalidChars: each case isolates the intended invalidChar (stable expectations)
+// invalidChars: each case isolates the intended invalidChar and first offending position
 const INVALID_CHARS_DETAILS = [
   // obvious ASCII forbidden chars
-  { value: 'foo@bar', invalidChar: '@' },
-  { value: 'foo bar', invalidChar: ' ' },
-  { value: 'test!value', invalidChar: '!' },
+  { value: 'foo@bar', invalidChar: '@', position: 3 },
+  { value: 'foo bar', invalidChar: ' ', position: 3 },
+  { value: 'test!value', invalidChar: '!', position: 4 },
 
-  // dots are always forbidden (and clearly reported as '.')
-  { value: '.foo', invalidChar: '.' },
-  { value: 'foo.', invalidChar: '.' },
-  { value: '..foo', invalidChar: '.' },
-  { value: 'foo..', invalidChar: '.' },
+  // dots are always forbidden and reported at the first offending position
+  { value: '.foo', invalidChar: '.', position: 0 },
+  { value: 'foo.', invalidChar: '.', position: 3 },
+  { value: '..foo', invalidChar: '.', position: 0 },
+  { value: 'foo..', invalidChar: '.', position: 3 },
 
-  // non-ASCII char without earlier forbidden chars (stable invalidChar)
-  { value: 'ab€', invalidChar: '€' },
+  // non-ASCII char without earlier forbidden chars
+  { value: 'ab€', invalidChar: '€', position: 2 },
 ] as const satisfies readonly InvalidChars[]
 
 const INVALID_CASES = {
@@ -138,7 +146,17 @@ describe('validateEnum', () => {
       }
     })
 
-    test('invalidChars reports invalidChar', () => {
+    test('tooShort has priority over later value rules', () => {
+      for (const value of caseOf('_', '-', '1', 'A')) {
+        zenumsExpect.mustThrow(() => validateEnum([value]), 'tooShort', {
+          index: 0,
+          value,
+          minLength: 2,
+        })
+      }
+    })
+
+    test('invalidChars reports invalidChar and position', () => {
       for (const item of INVALID_CHARS_DETAILS) {
         zenumsExpect.mustThrow(
           () => validateEnum([item.value]),
@@ -147,6 +165,7 @@ describe('validateEnum', () => {
             index: 0,
             value: item.value,
             invalidChar: item.invalidChar,
+            position: item.position,
           },
         )
       }
@@ -164,6 +183,15 @@ describe('validateEnum', () => {
         }
       })
     }
+
+    test('numericOnly has priority over startsWithDigit', () => {
+      for (const value of caseOf('123', '1-2', '22_44')) {
+        zenumsExpect.mustThrow(() => validateEnum([value]), 'numericOnly', {
+          index: 0,
+          value,
+        })
+      }
+    })
 
     test('capsOnly forbids ALL_CAPS without digits but allows CAPS+digits', () => {
       zenumsExpect.mustThrow(() => validateEnum(['HTTP']), 'capsOnly', {

@@ -32,13 +32,13 @@ jobs:
       - name: Update npm
         run: npm install -g npm@latest
 
-      - name: Show tool versions
-        run: node -v && npm -v
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.13
+
+      - name: Show tool versions
+        run: node -v && npm -v && bun --version
 
       - name: Cache Bun
         uses: actions/cache@v4
@@ -51,11 +51,11 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
-      - name: Build
-        run: npm run build
+      - name: Verify
+        run: npm run verify
 
-      - name: Test
-        run: bun run test:all
+      - name: Pack dry run
+        run: npm pack --dry-run
 
       - name: Publish
         run: npm publish --provenance

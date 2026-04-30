@@ -26,13 +26,14 @@
     "noImplicitOverride": true,
 
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0"
   },
-  "include": ["src/**/*.ts", "tests/unit/**/*.ts", "tests/helpers/**/*.ts"],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "tests/consumer/**/*.ts",
+  "include": [
+    "src/**/*.ts",
+    "tests/unit/**/*.ts",
+    "tests/helpers/**/*.ts",
     "tests/integration/**/*.ts"
-  ]
+  ],
+  "exclude": ["node_modules", "dist", "tests/consumer/**/*.ts"]
 }

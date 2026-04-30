@@ -9,12 +9,13 @@ const TEXT = {
   NOPE: 'nope',
   BROKEN: 'broken',
   UNREACHABLE: 'unreachable',
-  RECEIVED: 'received:',
+  RECEIVED_X: 'received: x',
 } as const
 
 describe('invariant', () => {
   test('does nothing when condition is truthy', () => {
     expect(() => invariant(true, TEXT.NOPE)).not.toThrow()
+    expect(() => invariant('truthy', TEXT.NOPE)).not.toThrow()
   })
 
   test('throws internalInvariant with provided text', () => {
@@ -24,6 +25,7 @@ describe('invariant', () => {
       { text: TEXT.BROKEN },
     )
 
+    expect(e.context.text).toBe(TEXT.BROKEN)
     expect(e.message).toContain(TEXT.BROKEN)
   })
 
@@ -34,6 +36,8 @@ describe('invariant', () => {
     )
 
     expect(e.context.text).toContain(TEXT.UNREACHABLE)
-    expect(e.context.text).toContain(TEXT.RECEIVED)
+    expect(e.context.text).toContain(TEXT.RECEIVED_X)
+    expect(e.message).toContain(TEXT.UNREACHABLE)
+    expect(e.message).toContain(TEXT.RECEIVED_X)
   })
 })

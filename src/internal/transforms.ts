@@ -1,17 +1,21 @@
 import { invariant } from './invariant'
 
-/** Non-empty array helper type (used after runtime checks) */
+// Non-empty array helper type (used after runtime checks)
 type NonEmptyArray<T> = readonly [T, ...T[]]
 
-/** Regexes used by the tokenizer (kept frozen for consistency) */
+// Runtime key pair produced from one enum value
+type EnumKeys = Readonly<{ constantKey: string; nameKey: string }>
+
+// Regexes used by the tokenizer (kept frozen for consistency)
 const RE = Object.freeze({
-  // CAPS+digits token: R2D2, API2, AB12 (but NOT FOO)
+  // CAPS+digits token: R2D2, API2, AB12, but not FOO
   capsDigitsToken: /^(?=.*\d)[A-Z0-9]+$/,
+
   // Tokenize no-separator strings: HTTPRequest -> ["HTTP", "Request"], foo2Bar -> ["foo2", "Bar"]
   tokenize: /[A-Z0-9]+(?=[A-Z][a-z])|[A-Z]?[a-z0-9]+|[A-Z0-9]+/g,
 })
 
-/** Domain separators used by naming rules */
+// Domain separators used by naming rules
 const SEPARATORS = {
   dash: '-',
   underscore: '_',
@@ -22,7 +26,7 @@ function assertNonEmpty<T>(arr: T[], msg: string): asserts arr is [T, ...T[]] {
   invariant(arr.length > 0, msg)
 }
 
-// Now returns NonEmptyArray<T> without any cast
+// Returns NonEmptyArray<T> after assertion
 function toNonEmpty<T>(arr: T[], msg: string): NonEmptyArray<T> {
   assertNonEmpty(arr, msg)
 
@@ -73,9 +77,7 @@ function formatNameToken(token: string): string {
 }
 
 /** Returns both constant and name keys for one enum value */
-export const toEnumKeys = (
-  value: string,
-): { constantKey: string; nameKey: string } => {
+export const toEnumKeys = (value: string): EnumKeys => {
   const parts = splitParts(value)
 
   // Fast-path: a single CAPS+digits token should remain unchanged

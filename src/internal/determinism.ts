@@ -1,5 +1,8 @@
-/* Determinism helpers: return frozen copies for stable logs/snapshots
-   Contract: never mutate inputs; always return new frozen arrays */
+/**
+ * Determinism helpers: return frozen copies for stable logs/snapshots
+ *
+ * Contract: never mutate inputs; always return new frozen arrays
+ */
 
 export const sorted = <T>(
   items: readonly T[],
@@ -12,7 +15,7 @@ export const sortedStrings = (items: readonly string[]): readonly string[] => {
   return Object.freeze([...items].sort((a, b) => a.localeCompare(b)))
 }
 
-// Keeps first occurrence by key, then sorts deterministically
+/** Keeps first occurrence by key, then sorts deterministically */
 export const sortedUniqBy = <T>(
   items: readonly T[],
   key: (item: T) => string,
@@ -21,15 +24,15 @@ export const sortedUniqBy = <T>(
   const seen = new Set<string>()
   const uniq: T[] = []
 
-  for (const it of items) {
-    const k = key(it)
+  for (const item of items) {
+    const dedupeKey = key(item)
 
-    if (seen.has(k)) {
+    if (seen.has(dedupeKey)) {
       continue
     }
 
-    seen.add(k)
-    uniq.push(it)
+    seen.add(dedupeKey)
+    uniq.push(item)
   }
 
   return Object.freeze([...uniq].sort(compare))

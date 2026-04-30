@@ -79,18 +79,24 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "typecheck:test": "tsc -p tsconfig.json --noEmit",
     "typecheck:consumer": "tsc -p tests/consumer/tsconfig.bundler.json --noEmit && tsc -p tests/consumer/tsconfig.nodenext.json --noEmit",
+
     "lint": "biome lint .",
     "lint:fix": "biome lint . --write",
     "format": "biome format . --write",
+
     "test:unit": "bun test tests/unit",
-    "test:integration": "bun run build && bun test tests/integration",
-    "smoke": "bun run build && node scripts/smoke.mjs",
+    "test:integration": "bun test tests/integration",
+    "smoke": "node scripts/smoke.mjs",
     "test": "bun run test:unit",
-    "test:all": "bun run test:unit && bun run test:integration && bun run smoke && npm run typecheck:consumer",
-    "prepublishOnly": "npm run typecheck && npm run typecheck:test && npm run typecheck:consumer && npm run build && bun run test:all"
+    "test:all": "bun run test:unit && bun run build && bun run test:integration && bun run smoke && npm run typecheck:consumer",
+
+    "pack:check": "npm pack --dry-run",
+    "verify": "npm run lint && npm run typecheck && npm run typecheck:test && bun run test:all",
+    "prepublishOnly": "npm run verify"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",

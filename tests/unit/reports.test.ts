@@ -109,6 +109,11 @@ const DETAILS_NEEDLES_ABSENT_WHEN_EMPTY = Object.freeze([
 const SUMMARY_NEEDLES_WITH_ISSUES = Object.freeze([
   'Enum definition rejected.',
   'Stats:',
+  '  received: 6',
+  '  valid: 2',
+  '  invalid: 3',
+  '  duplicates: 2',
+  '  collisions: 3 (constants: 2, names: 1)',
   'Details:',
 ] as const)
 
@@ -116,6 +121,20 @@ const COLLISION_SECTION_NEEDLES = Object.freeze([
   'Collisions (constants):',
   'Collisions (names):',
 ] as const)
+
+// Assertion helper for stable ordering checks in rendered report text
+function expectInOrder(text: string, needles: readonly string[]): void {
+  let previousIndex = -1
+
+  for (const needle of needles) {
+    const index = text.indexOf(needle)
+
+    expect(index, needle).toBeGreaterThanOrEqual(0)
+    expect(index, needle).toBeGreaterThan(previousIndex)
+
+    previousIndex = index
+  }
+}
 
 describe('reports', () => {
   describe('buildDefinitionRejectedDetails', () => {
@@ -130,7 +149,7 @@ describe('reports', () => {
       expectTextNotContainsAny(text, DETAILS_NEEDLES_ABSENT_WHEN_EMPTY)
     })
 
-    test('renders details with deterministic ordering (invalids/duplicates/collisions)', () => {
+    test('renders details with deterministic ordering without mutating inputs', () => {
       const out = buildDefinitionRejectedDetails(
         REPORT_WITH_ISSUES,
         STATS_WITH_ISSUES,
@@ -140,50 +159,47 @@ describe('reports', () => {
 
       const text = toText(out)
 
-      // Summary exists
+      // Summary exists and includes formatted collision stats
       expectTextContainsAll(text, SUMMARY_NEEDLES_WITH_ISSUES)
 
       // Invalids are sorted by index, then code
-      const iCapsOnly = text.indexOf('  • [0] "ABC" — capsOnly:')
-      const iNotMeaningful = text.indexOf('  • [2] "a" — notMeaningful:')
-      const iTooShort = text.indexOf('  • [2] "x" — tooShort:')
-
-      expect(iCapsOnly).toBeGreaterThanOrEqual(0)
-      expect(iNotMeaningful).toBeGreaterThanOrEqual(0)
-      expect(iTooShort).toBeGreaterThanOrEqual(0)
-
-      expect(iCapsOnly).toBeLessThan(iNotMeaningful)
-      expect(iNotMeaningful).toBeLessThan(iTooShort)
+      expectInOrder(text, [
+        '  • [0] "ABC" — capsOnly:',
+        '  • [2] "a" — notMeaningful:',
+        '  • [2] "x" — tooShort:',
+      ])
 
       // Duplicates are sorted by value
-      const dA = text.indexOf('  • [1, 3] "a" — duplicate')
-      const dB = text.indexOf('  • [2, 5] "b" — duplicate')
+      expectInOrder(text, [
+        '  • [1, 3] "a" — duplicate',
+        '  • [2, 5] "b" — duplicate',
+      ])
 
-      expect(dA).toBeGreaterThanOrEqual(0)
-      expect(dB).toBeGreaterThanOrEqual(0)
-      expect(dA).toBeLessThan(dB)
-
-      // Collisions sections exist and are ordered by key, sources sorted
+      // Collision sections exist and constants are sorted by key
       expectTextContainsAll(text, COLLISION_SECTION_NEEDLES)
 
-      // constants: key A should appear before key B
-      const cA = text.indexOf('  • "A" — collision (sources):')
-      const cB = text.indexOf('  • "B" — collision (sources):')
+      expectInOrder(text, [
+        '  • "A" — collision (sources):',
+        '    • "a1"',
+        '    • "a2"',
+        '  • "B" — collision (sources):',
+        '    • "b1"',
+        '    • "b2"',
+      ])
 
-      expect(cA).toBeGreaterThanOrEqual(0)
-      expect(cB).toBeGreaterThanOrEqual(0)
-      expect(cA).toBeLessThan(cB)
+      // Names sources are sorted too
+      expectInOrder(text, [
+        '  • "Z" — collision (sources):',
+        '    • "z1"',
+        '    • "z2"',
+      ])
 
-      // sources sorted within each key (a1 before a2, b1 before b2, z1 before z2)
-      expect(text.indexOf('    • "a1"')).toBeLessThan(
-        text.indexOf('    • "a2"'),
-      )
-      expect(text.indexOf('    • "b1"')).toBeLessThan(
-        text.indexOf('    • "b2"'),
-      )
-      expect(text.indexOf('    • "z1"')).toBeLessThan(
-        text.indexOf('    • "z2"'),
-      )
+      // Renderer must sort copies only; fixtures intentionally remain unsorted
+      expect(REPORT_WITH_ISSUES.collisions.constants[0]?.key).toBe('B')
+      expect(REPORT_WITH_ISSUES.collisions.constants[0]?.sources).toEqual([
+        'b2',
+        'b1',
+      ])
     })
   })
 })

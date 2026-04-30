@@ -72,7 +72,7 @@ const MESSAGES = {
 
     return (
       `Value at index ${ctx.index} '${ctx.value}' contains invalid character ${quote(ctx.invalidChar)}${where}. ` +
-      `Only allowed: letters, digits, '-', '_' .`
+      `Only allowed: letters, digits, '-', '_'.`
     )
   },
 

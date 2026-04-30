@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import type { EnumErrorContext } from '../../src'
 import { prepareDefinition } from '../../src/internal/rejected'
 import {
   assertFrozen,
@@ -19,7 +20,7 @@ const WITH_COLLISION = Object.freeze(['foo-bar', 'foo_bar'] as const)
 
 // Mixed: invalid + duplicate + collision at once
 // Notes:
-// - 'a' should be invalid under "notMeaningful" style rules (as in your reports test fixtures)
+// - 'a' is invalid as tooShort because length gate runs before semantic checks
 // - duplicates: 'foo' repeats
 // - collisions: foo-bar + foo_bar
 const WITH_MIXED_ISSUES = Object.freeze([
@@ -31,6 +32,13 @@ const WITH_MIXED_ISSUES = Object.freeze([
 ] as const)
 
 // Local tiny helpers: domain-level intent (avoid string duplication noise)
+
+type DefinitionRejectedCtx = Extract<
+  EnumErrorContext,
+  { code: typeof DEFINITION_REJECTED_CODE }
+>
+
+type CountRule = 'eq0' | 'gt0'
 
 const COLLISION_SECTION_NEEDLES = Object.freeze([
   'Collisions (constants):',
@@ -56,6 +64,34 @@ const MIXED_DETAILS_NEEDLES = Object.freeze([
   '"foo_bar"',
 ] as const)
 
+function expectRejected(
+  out: ReturnType<typeof prepareDefinition>,
+): DefinitionRejectedCtx {
+  expect(out.ok).toBe(false)
+
+  if (out.ok) {
+    expect.unreachable('Expected ok:false')
+  }
+
+  expect(out.error.code).toBe(DEFINITION_REJECTED_CODE)
+
+  return out.error
+}
+
+function expectCounts(
+  items: readonly (readonly [label: string, count: number, rule: CountRule])[],
+): void {
+  for (const [label, count, rule] of items) {
+    if (rule === 'gt0') {
+      expect(count, label).toBeGreaterThan(0)
+
+      continue
+    }
+
+    expect(count, label).toBe(0)
+  }
+}
+
 describe('rejected', () => {
   describe('prepareDefinition', () => {
     test('returns ok:true when there are no issues', () => {
@@ -66,18 +102,20 @@ describe('rejected', () => {
     })
 
     test('returns ok:false with definitionRejected payload when there are issues', () => {
-      const out = prepareDefinition(WITH_MIXED_ISSUES)
-
-      expect(out.ok).toBe(false)
-      if (out.ok) {
-        expect.unreachable('Expected ok:false')
-      }
-
-      const ctx = out.error
-      expect(ctx.code).toBe(DEFINITION_REJECTED_CODE)
+      const ctx = expectRejected(prepareDefinition(WITH_MIXED_ISSUES))
 
       // Core payload blocks should be present and frozen
-      const coreFrozenBlocks = [ctx.details, ctx.report, ctx.stats]
+      const coreFrozenBlocks = [
+        ctx.details,
+        ctx.report,
+        ctx.report.invalid,
+        ctx.report.duplicates,
+        ctx.report.collisions,
+        ctx.report.collisions.constants,
+        ctx.report.collisions.names,
+        ctx.stats,
+        ctx.stats.collisions,
+      ] as const
 
       for (const block of coreFrozenBlocks) {
         assertFrozen(block)
@@ -118,51 +156,46 @@ describe('rejected', () => {
         expect(stat, `${label} stat`).toBe(len)
       }
 
+      expect(ctx.stats.collisions.total, 'collisions.total stat').toBe(
+        ctx.report.collisions.constants.length +
+          ctx.report.collisions.names.length,
+      )
+
       // Mixed scenario expectations:
       // - at least 1 invalid (the 'a')
       // - at least 1 duplicate ('foo')
       // - collisions for both kinds (foo-bar vs foo_bar)
-      const mixedGt0 = [
-        ['invalid', ctx.report.invalid.length],
-        ['duplicates', ctx.report.duplicates.length],
-        ['collisions.constants', ctx.report.collisions.constants.length],
-        ['collisions.names', ctx.report.collisions.names.length],
-      ] as const
+      expectCounts([
+        ['invalid', ctx.report.invalid.length, 'gt0'],
+        ['duplicates', ctx.report.duplicates.length, 'gt0'],
+        ['collisions.constants', ctx.report.collisions.constants.length, 'gt0'],
+        ['collisions.names', ctx.report.collisions.names.length, 'gt0'],
+      ])
 
-      for (const [label, n] of mixedGt0) {
-        expect(n, label).toBeGreaterThan(0)
-      }
+      expect(ctx.report.invalid).toContainEqual({
+        code: 'tooShort',
+        index: 4,
+        value: 'a',
+        minLength: 2,
+      })
+
+      expect(ctx.report.duplicates).toContainEqual({
+        value: 'foo',
+        indexes: [0, 1],
+      })
 
       // Details: should mention sections and include key collision wording
       expectTextContainsAll(text, MIXED_DETAILS_NEEDLES)
     })
 
     test('does not include collisions when only duplicates exist', () => {
-      const out = prepareDefinition(WITH_DUPLICATE)
+      const ctx = expectRejected(prepareDefinition(WITH_DUPLICATE))
 
-      expect(out.ok).toBe(false)
-      if (out.ok) {
-        expect.unreachable('Expected ok:false')
-      }
-
-      const ctx = out.error
-      expect(ctx.code).toBe(DEFINITION_REJECTED_CODE)
-
-      const onlyDupExpects = [
+      expectCounts([
         ['duplicates', ctx.report.duplicates.length, 'gt0'],
         ['collisions.constants', ctx.report.collisions.constants.length, 'eq0'],
         ['collisions.names', ctx.report.collisions.names.length, 'eq0'],
-      ] as const
-
-      for (const [label, n, rule] of onlyDupExpects) {
-        if (rule === 'gt0') {
-          expect(n, label).toBeGreaterThan(0)
-
-          continue
-        }
-
-        expect(n, label).toBe(0)
-      }
+      ])
 
       const text = toText(ctx.details)
       expectTextContainsAll(text, DUPLICATES_ONLY_NEEDLES)
@@ -170,32 +203,14 @@ describe('rejected', () => {
     })
 
     test('includes collisions when only collisions exist', () => {
-      const out = prepareDefinition(WITH_COLLISION)
+      const ctx = expectRejected(prepareDefinition(WITH_COLLISION))
 
-      expect(out.ok).toBe(false)
-      if (out.ok) {
-        expect.unreachable('Expected ok:false')
-      }
-
-      const ctx = out.error
-      expect(ctx.code).toBe(DEFINITION_REJECTED_CODE)
-
-      const onlyColExpects = [
+      expectCounts([
         ['invalid', ctx.report.invalid.length, 'eq0'],
         ['duplicates', ctx.report.duplicates.length, 'eq0'],
         ['collisions.constants', ctx.report.collisions.constants.length, 'gt0'],
         ['collisions.names', ctx.report.collisions.names.length, 'gt0'],
-      ] as const
-
-      for (const [label, n, rule] of onlyColExpects) {
-        if (rule === 'gt0') {
-          expect(n, label).toBeGreaterThan(0)
-
-          continue
-        }
-
-        expect(n, label).toBe(0)
-      }
+      ])
 
       const text = toText(ctx.details)
       expectTextContainsAll(text, COLLISION_SECTION_NEEDLES)

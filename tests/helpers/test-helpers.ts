@@ -2,26 +2,29 @@ import { expect } from 'bun:test'
 import { ZenumsError } from '../../src'
 import type { EnumErrorCode, EnumErrorContext } from '../../src/types'
 
-/** A single test case: a NON-empty list of enum values */
+/** A single test case: a non-empty list of enum values */
 export type ValuesCase = readonly [string, ...string[]]
 
-/** Context type for a specific error code */
+/** Context type narrowed to a specific error code */
 type ContextFor<K extends EnumErrorCode> = Extract<
   EnumErrorContext,
   { code: K }
 >
 
-/** Subset of context fields for assertions (excluding the discriminant `code`) */
+/** Partial context assertion shape without the discriminant code */
 type ContextSubset<K extends EnumErrorCode> = Partial<
   Omit<ContextFor<K>, 'code'>
 >
 
-/** ZenumsError narrowed by code */
+/** ZenumsError narrowed by its discriminated context code */
 type ZenumsErrorFor<K extends EnumErrorCode> = ZenumsError & {
   context: ContextFor<K>
 }
 
-// Formats thrown values for readable failure messages
+/** Captures either a successful return value or a thrown value */
+type CaptureResult<T> = { ok: true; value: T } | { ok: false; error: unknown }
+
+// Formats thrown values for readable assertion failure messages
 function formatThrown(err: unknown): string {
   if (err instanceof Error) {
     return err.stack ?? `${err.name}: ${err.message}`
@@ -38,7 +41,7 @@ function formatThrown(err: unknown): string {
   return String(err)
 }
 
-// Narrows context shape to the exact context for a given code
+// Narrows generic enum error context to the exact context for a specific code
 function assertContextCode<K extends EnumErrorCode>(
   context: EnumErrorContext,
   code: K,
@@ -51,32 +54,33 @@ export const caseOf = (first: string, ...rest: string[]): ValuesCase => {
   return [first, ...rest]
 }
 
-/** Builds a pair ValuesCase */
+/** Builds a two-value ValuesCase */
 export const pair = (a: string, b: string): ValuesCase => {
   return [a, b]
 }
 
-/** Assertions: shared helpers to keep tests compact and intention-revealing */
-
+/** Asserts that a value is frozen */
 export const assertFrozen = <T>(value: T): void => {
   expect(Object.isFrozen(value)).toBe(true)
 }
 
+/** Asserts that text contains every expected substring */
 export const expectTextContainsAll = (
   text: string,
   needles: readonly string[],
 ): void => {
-  for (const s of needles) {
-    expect(text).toContain(s)
+  for (const needle of needles) {
+    expect(text).toContain(needle)
   }
 }
 
+/** Asserts that text contains none of the forbidden substrings */
 export const expectTextNotContainsAny = (
   text: string,
   needles: readonly string[],
 ): void => {
-  for (const s of needles) {
-    expect(text).not.toContain(s)
+  for (const needle of needles) {
+    expect(text).not.toContain(needle)
   }
 }
 
@@ -85,12 +89,9 @@ export const toText = (lines: readonly string[]): string => {
   return lines.join('\n')
 }
 
-// Captures success value or thrown error from fn()
-type CaptureResult<T> = { ok: true; value: T } | { ok: false; error: unknown }
-
-/** Helpers for capturing thrown values */
+/** Helpers for capturing thrown values without losing the original error */
 export const capture = {
-  /** Captures result or thrown error */
+  /** Captures a return value or thrown value */
   run<T>(fn: () => T): CaptureResult<T> {
     try {
       return { ok: true, value: fn() }
@@ -99,30 +100,30 @@ export const capture = {
     }
   },
 
-  /** Captures thrown value and fails if nothing was thrown */
+  /** Captures the thrown value and fails if nothing was thrown */
   mustThrow(fn: () => unknown): unknown {
-    const res = capture.run(fn)
+    const result = capture.run(fn)
 
-    if (res.ok) {
+    if (result.ok) {
       expect.unreachable('Expected function to throw, but nothing was thrown')
     }
 
-    return res.error
+    return result.error
   },
 
-  /** Asserts that the function does NOT throw */
+  /** Asserts that the function does not throw */
   noThrow(fn: () => unknown): void {
-    const res = capture.run(fn)
+    const result = capture.run(fn)
 
-    if (!res.ok) {
+    if (!result.ok) {
       expect.unreachable(
-        `Expected function not to throw, but it threw:\n${formatThrown(res.error)}`,
+        `Expected function not to throw, but it threw:\n${formatThrown(result.error)}`,
       )
     }
   },
 } as const
 
-/** Helpers for asserting ZenumsError shape and details */
+/** Helpers for asserting ZenumsError shape, code, and context details */
 export const zenumsExpect = {
   /** Asserts ZenumsError shape and checks code + optional context subset */
   thrownError<K extends EnumErrorCode>(
@@ -144,17 +145,18 @@ export const zenumsExpect = {
     return e as ZenumsErrorFor<K>
   },
 
-  /** Runs fn and asserts it throws ZenumsError with given code/context */
+  /** Runs fn and asserts that it throws ZenumsError with the expected code/context */
   mustThrow<K extends EnumErrorCode>(
     fn: () => unknown,
     code: K,
     contextSubset?: ContextSubset<K>,
   ): ZenumsErrorFor<K> {
     const err = capture.mustThrow(fn)
+
     return zenumsExpect.thrownError(err, code, contextSubset)
   },
 
-  /** Runs fn and asserts it does NOT throw */
+  /** Runs fn and asserts that it does not throw */
   noThrow(fn: () => unknown): void {
     capture.noThrow(fn)
   },
