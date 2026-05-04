@@ -9,6 +9,7 @@ Type-safe enum creation for TypeScript and Zod — without duplicating enum valu
 - generated `names` keys
 - runtime validation helpers
 - type narrowing through `is()` and `parse()`
+- lightweight type helpers such as `EnumValue`
 - deterministic diagnostics for invalid definitions
 - optional Zod integration through `zenums/zod`
 
@@ -78,11 +79,11 @@ npm i zod
 ## Quick start
 
 ```ts
-import { createEnum } from 'zenums'
+import { createEnum, type EnumValue } from 'zenums'
 
 const Transport = createEnum(['stdout', 'stderr', 'API2'] as const)
 
-type TransportValue = (typeof Transport.values)[number]
+type TransportValue = EnumValue<typeof Transport>
 // 'stdout' | 'stderr' | 'API2'
 
 Transport.values
@@ -191,12 +192,32 @@ The returned object and its public blocks are frozen.
 
 ---
 
-## Type narrowing note
+## Type helpers
 
-`zenums` keeps the original tuple as the source of truth, so the most reliable union type is derived from `values`:
+### EnumValue
+
+`EnumValue` extracts the literal union from either a `createEnum()` result or from a raw `values` tuple.
 
 ```ts
-import { createEnum } from 'zenums'
+import { createEnum, type EnumValue } from 'zenums'
+
+const Transport = createEnum(['stdout', 'stderr', 'API2'] as const)
+
+type TransportValue = EnumValue<typeof Transport>
+// 'stdout' | 'stderr' | 'API2'
+```
+
+You can also pass the tuple directly:
+
+```ts
+type TransportValueFromTuple = EnumValue<typeof Transport.values>
+// 'stdout' | 'stderr' | 'API2'
+```
+
+This keeps contract code compact when many enum definitions are used:
+
+```ts
+import { createEnum, type EnumValue } from 'zenums'
 
 export const inputChannelContract = createEnum([
   'args',
@@ -204,7 +225,7 @@ export const inputChannelContract = createEnum([
   'object',
 ] as const)
 
-export type InputChannel = (typeof inputChannelContract.values)[number]
+export type InputChannel = EnumValue<typeof inputChannelContract>
 // 'args' | 'process' | 'object'
 ```
 
@@ -217,20 +238,27 @@ export type DefaultInputChannel = typeof INPUT_CHANNELS.ARGS
 // 'args'
 ```
 
-`names` are useful for PascalCase runtime access, but they are not the recommended source for single-value type extraction right now. Prefer `values` for unions and `constants` for narrowed single-value types.
+`names` are useful for PascalCase runtime access, but they are not the recommended source for single-value type extraction right now. Prefer `EnumValue` for unions and `constants` for narrowed single-value types.
 
 ---
 
 ## Type inference
 
-Use `values` when you need the full literal union:
+Use `EnumValue` when you need the full literal union:
 
 ```ts
-import { createEnum } from 'zenums'
+import { createEnum, type EnumValue } from 'zenums'
 
 const InputChannel = createEnum(['args', 'process', 'object'] as const)
 
-type InputChannelValue = (typeof InputChannel.values)[number]
+type InputChannelValue = EnumValue<typeof InputChannel>
+// 'args' | 'process' | 'object'
+```
+
+The direct tuple style is still supported:
+
+```ts
+type InputChannelValue = EnumValue<typeof InputChannel.values>
 // 'args' | 'process' | 'object'
 ```
 
@@ -246,11 +274,13 @@ type DefaultInputChannel = typeof INPUT_CHANNELS.ARGS
 This is useful when a config contract needs a default value type that must stay connected to the enum source of truth:
 
 ```ts
+import { createEnum, type EnumValue } from 'zenums'
+
 export const inputChannelContract = createEnum(['args', 'process', 'object'] as const)
 
 export const INPUT_CHANNELS = inputChannelContract.constants
 
-export type InputChannel = (typeof inputChannelContract.values)[number]
+export type InputChannel = EnumValue<typeof inputChannelContract>
 export type DefaultInputChannel = typeof INPUT_CHANNELS.ARGS
 ```
 
@@ -512,13 +542,13 @@ Recommended pattern:
 
 ```ts
 import * as z from 'zod'
-import { createEnum } from 'zenums'
+import { createEnum, type EnumValue } from 'zenums'
 
 const TRANSPORT_VALUES = ['stdout', 'stderr', 'API2'] as const
 
 export const Transport = createEnum(TRANSPORT_VALUES)
 
-export type TransportValue = (typeof Transport.values)[number]
+export type TransportValue = EnumValue<typeof Transport>
 
 export const TransportSchema = z.enum(Transport.values)
 ```
@@ -566,29 +596,34 @@ Example formatted output:
 ```text
 ZenumsError: Enum definition rejected.
 
-Stats:
-  received: 5
-  valid: 2
-  invalid: 1
-  duplicates: 1
-  collisions: 2 (constants: 1, names: 1)
+== Summary ==
+received     5
+valid        2
+invalid      1
+duplicates   1
+collisions   2 (constants: 1, names: 1)
 
-Details:
-Invalid:
-  • [4] "a" — tooShort: minimum length is 2
+== Issues ==
+[invalid]
+-> [4] "a"
+   code: tooShort
+   message: minimum length is 2
 
-Duplicates:
-  • [0, 1] "foo" — duplicate
+[duplicates]
+-> [0, 1] "foo"
+   message: duplicate value
 
-Collisions (constants):
-  • "FOO_BAR" — collision (sources):
-    • "foo-bar"
-    • "foo_bar"
+[collisions.constants]
+-> "FOO_BAR"
+   sources:
+      - "foo-bar"
+      - "foo_bar"
 
-Collisions (names):
-  • "FooBar" — collision (sources):
-    • "foo-bar"
-    • "foo_bar"
+[collisions.names]
+-> "FooBar"
+   sources:
+      - "foo-bar"
+      - "foo_bar"
 ```
 
 ---
@@ -641,6 +676,7 @@ import {
   toConstKey,
   toNameKey,
   ZenumsError,
+  type EnumValue,
 } from 'zenums'
 ```
 
