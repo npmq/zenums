@@ -3,8 +3,18 @@ import type { EnumConstKey } from './constant-key'
 /** Tuple of enum values used as a single source of truth */
 export type EnumValues = readonly [string, ...string[]]
 
-/** Union of allowed values extracted from EnumValues tuple */
-export type EnumValue<T extends EnumValues> = T[number]
+// Enum-like object shape that exposes values
+type EnumValueObject<T extends EnumValues = EnumValues> = { values: T }
+
+// Accepts either a raw enum values tuple or an enum-like object with values
+type EnumValueSource = EnumValues | EnumValueObject
+
+// Extracts the enum values tuple from supported EnumValue sources
+type EnumValuesOf<T extends EnumValueSource> =
+  T extends EnumValueObject<infer Values> ? Values : T
+
+/** Union of allowed values extracted from an enum tuple or enum object */
+export type EnumValue<T extends EnumValueSource> = EnumValuesOf<T>[number]
 
 /** Record mapping generated CONSTANTS keys to exact enum values */
 export type EnumConstants<T extends EnumValues> = Readonly<{

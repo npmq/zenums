@@ -48,12 +48,13 @@ const WITH_MIXED_ISSUES = Object.freeze([
 
 const REJECTED_NEEDLES = Object.freeze([
   'Enum definition rejected.',
-  'Stats:',
+  '== Summary ==',
+  '== Issues ==',
 ] as const)
 
 const COLLISION_SECTION_NEEDLES = Object.freeze([
-  'Collisions (constants):',
-  'Collisions (names):',
+  '[collisions.constants]',
+  '[collisions.names]',
 ] as const)
 
 describe('createEnum', () => {

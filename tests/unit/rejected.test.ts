@@ -41,27 +41,32 @@ type DefinitionRejectedCtx = Extract<
 type CountRule = 'eq0' | 'gt0'
 
 const COLLISION_SECTION_NEEDLES = Object.freeze([
-  'Collisions (constants):',
-  'Collisions (names):',
+  '[collisions.constants]',
+  '[collisions.names]',
 ] as const)
 
-const DUPLICATES_ONLY_NEEDLES = Object.freeze(['Duplicates:'] as const)
+const DUPLICATES_ONLY_NEEDLES = Object.freeze(['[duplicates]'] as const)
 
 const STATS_NEEDLES = Object.freeze([
   'Enum definition rejected.',
-  'Stats:',
-  'Details:',
+  '== Summary ==',
+  '== Issues ==',
 ] as const)
 
 const MIXED_DETAILS_NEEDLES = Object.freeze([
-  'Invalid:',
-  'Duplicates:',
+  '[invalid]',
+  '[duplicates]',
   ...COLLISION_SECTION_NEEDLES,
-  '— collision (sources):',
-  '"FOO_BAR"',
-  '"FooBar"',
-  '"foo-bar"',
-  '"foo_bar"',
+  '-> [4] "a"',
+  '   code: tooShort',
+  '   message: minimum length is 2',
+  '-> [0, 1] "foo"',
+  '   message: duplicate value',
+  '-> "FOO_BAR"',
+  '-> "FooBar"',
+  '   sources:',
+  '      - "foo-bar"',
+  '      - "foo_bar"',
 ] as const)
 
 function expectRejected(

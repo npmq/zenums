@@ -9,20 +9,22 @@ import { sorted, sortedStrings } from './determinism'
 // Centralized section labels to keep formatting consistent and easy to tweak in one place
 const LABELS = Object.freeze({
   rejected: 'Enum definition rejected.',
-  stats: 'Stats:',
-  details: 'Details:',
-  invalid: 'Invalid:',
-  duplicates: 'Duplicates:',
-  collisions: (kind: EnumKeyKind) => `Collisions (${kind}):`,
+  summary: '== Summary ==',
+  issues: '== Issues ==',
+  invalid: '[invalid]',
+  duplicates: '[duplicates]',
+  collisions: (kind: EnumKeyKind) => `[collisions.${kind}]`,
 } as const)
 
-// Indentation tokens for stable visual hierarchy (keeps nesting consistent across all sections)
-const INDENT = Object.freeze({
-  l1: '  ',
-  l2: '    ',
+// Formatting tokens for stable visual hierarchy in logs and snapshots
+const FORMAT = Object.freeze({
+  arrow: '->',
+  issueIndent: '   ',
+  nestedIndent: '      ',
+  source: '-',
 } as const)
 
-// Comparator bundle for local consistency (keeps sorting rules in one place)
+// Local report helpers keep type aliases and sorting rules close to the renderer
 
 type InvalidEntry = RejectedReport['invalid'][number]
 type DuplicateEntry = RejectedReport['duplicates'][number]
@@ -86,24 +88,33 @@ function invalidMessage(it: InvalidEntry): string {
 // Line templates for report rendering (single source of truth for wording + spacing)
 const TPL = Object.freeze({
   stat: (name: string, value: number | string) =>
-    `${INDENT.l1}${name}: ${value}`,
+    `${name.padEnd(12, ' ')} ${value}`,
 
-  invalidItem: (it: InvalidEntry) => {
+  invalidHead: (it: InvalidEntry) => {
     const valuePart =
       it.code === 'notString'
         ? `<non-string: ${it.receivedType}>`
         : `"${it.value}"`
 
-    return `${INDENT.l1}• [${it.index}] ${valuePart} — ${it.code}: ${invalidMessage(it)}`
+    return `${FORMAT.arrow} [${it.index}] ${valuePart}`
   },
 
-  duplicateItem: (value: string, indexes: readonly number[]) =>
-    `${INDENT.l1}• [${indexes.join(', ')}] "${value}" — duplicate`,
+  invalidCode: (it: InvalidEntry) => `${FORMAT.issueIndent}code: ${it.code}`,
 
-  collisionKey: (key: string) =>
-    `${INDENT.l1}• "${key}" — collision (sources):`,
+  invalidMessage: (it: InvalidEntry) =>
+    `${FORMAT.issueIndent}message: ${invalidMessage(it)}`,
 
-  collisionSource: (source: string) => `${INDENT.l2}• "${source}"`,
+  duplicateHead: (value: string, indexes: readonly number[]) =>
+    `${FORMAT.arrow} [${indexes.join(', ')}] "${value}"`,
+
+  duplicateMessage: () => `${FORMAT.issueIndent}message: duplicate value`,
+
+  collisionHead: (key: string) => `${FORMAT.arrow} "${key}"`,
+
+  collisionSourcesLabel: () => `${FORMAT.issueIndent}sources:`,
+
+  collisionSource: (source: string) =>
+    `${FORMAT.nestedIndent}${FORMAT.source} "${source}"`,
 } as const)
 
 // Stable helpers for deterministic, snapshot-friendly output
@@ -130,11 +141,11 @@ function pushCollisionSection(
     return
   }
 
-  lines.push('')
   lines.push(LABELS.collisions(kind))
 
   for (const c of items) {
-    lines.push(TPL.collisionKey(c.key))
+    lines.push(TPL.collisionHead(c.key))
+    lines.push(TPL.collisionSourcesLabel())
 
     for (const s of c.sources) {
       lines.push(TPL.collisionSource(s))
@@ -156,7 +167,7 @@ export const buildDefinitionRejectedDetails = (
   // Summary first (most useful in logs)
   lines.push(LABELS.rejected)
   lines.push('')
-  lines.push(LABELS.stats)
+  lines.push(LABELS.summary)
   lines.push(TPL.stat('received', stats.received))
   lines.push(TPL.stat('valid', stats.valid))
   lines.push(TPL.stat('invalid', stats.invalid))
@@ -174,7 +185,7 @@ export const buildDefinitionRejectedDetails = (
   }
 
   lines.push('')
-  lines.push(LABELS.details)
+  lines.push(LABELS.issues)
 
   // Invalids (sorted by index, then code)
   if (report.invalid.length > 0) {
@@ -183,7 +194,9 @@ export const buildDefinitionRejectedDetails = (
     const invalidSorted = sorted(report.invalid, byInvalid)
 
     for (const it of invalidSorted) {
-      lines.push(TPL.invalidItem(it))
+      lines.push(TPL.invalidHead(it))
+      lines.push(TPL.invalidCode(it))
+      lines.push(TPL.invalidMessage(it))
     }
   }
 
@@ -198,7 +211,8 @@ export const buildDefinitionRejectedDetails = (
     const dupSorted = sorted(report.duplicates, byDuplicate)
 
     for (const d of dupSorted) {
-      lines.push(TPL.duplicateItem(d.value, d.indexes))
+      lines.push(TPL.duplicateHead(d.value, d.indexes))
+      lines.push(TPL.duplicateMessage())
     }
   }
 
@@ -206,8 +220,25 @@ export const buildDefinitionRejectedDetails = (
   const constants = sortCollisionItems(report.collisions.constants)
   const names = sortCollisionItems(report.collisions.names)
 
-  pushCollisionSection(lines, 'constants', constants)
-  pushCollisionSection(lines, 'names', names)
+  if (constants.length > 0) {
+    if (report.invalid.length > 0 || report.duplicates.length > 0) {
+      lines.push('')
+    }
+
+    pushCollisionSection(lines, 'constants', constants)
+  }
+
+  if (names.length > 0) {
+    if (
+      report.invalid.length > 0 ||
+      report.duplicates.length > 0 ||
+      constants.length > 0
+    ) {
+      lines.push('')
+    }
+
+    pushCollisionSection(lines, 'names', names)
+  }
 
   return Object.freeze(lines)
 }

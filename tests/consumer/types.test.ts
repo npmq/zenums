@@ -1,4 +1,4 @@
-import type { EnumConstKey } from 'zenums'
+import type { EnumConstKey, EnumValue } from 'zenums'
 import { createEnum, toConstKey, toNameKey } from 'zenums'
 import { toZodEnum } from 'zenums/zod'
 import * as z from 'zod'
@@ -81,6 +81,31 @@ void ok
 // @ts-expect-error - not in union
 const bad: V = BAD_VALUE
 void bad
+
+// --- EnumValue helper typing
+
+type VFromValues = EnumValue<typeof E.values>
+type VFromEnum = EnumValue<typeof E>
+
+const enumValueFromValues: VFromValues = OK_VALUE
+const enumValueFromEnum: VFromEnum = OK_VALUE
+
+void enumValueFromValues
+void enumValueFromEnum
+
+// @ts-expect-error - EnumValue from tuple should reject values outside the union
+const badEnumValueFromValues: VFromValues = BAD_VALUE
+void badEnumValueFromValues
+
+// @ts-expect-error - EnumValue from enum object should reject values outside the union
+const badEnumValueFromEnum: VFromEnum = BAD_VALUE
+void badEnumValueFromEnum
+
+const stdoutFromHelper: VFromEnum = E.constants.STDOUT
+const stdoutConstantLiteral: 'stdout' = E.constants.STDOUT
+
+void stdoutFromHelper
+void stdoutConstantLiteral
 
 // --- createEnum constants typing
 
@@ -169,6 +194,18 @@ const COMPLEX_VALUES = [
 const Complex = createEnum(COMPLEX_VALUES)
 
 type ComplexValue = (typeof Complex.values)[number]
+type ComplexValueFromValues = EnumValue<typeof Complex.values>
+type ComplexValueFromEnum = EnumValue<typeof Complex>
+
+const complexValueFromValues: ComplexValueFromValues = 'OAuth2Token'
+const complexValueFromEnum: ComplexValueFromEnum = 'version2API'
+
+void complexValueFromValues
+void complexValueFromEnum
+
+// @ts-expect-error - EnumValue from complex enum should reject values outside the union
+const badComplexValueFromEnum: ComplexValueFromEnum = BAD_VALUE
+void badComplexValueFromEnum
 
 const complexConstants: typeof Complex.constants = {
   KEBAB_CASE: 'kebab-case',

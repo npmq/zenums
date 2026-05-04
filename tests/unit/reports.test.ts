@@ -90,36 +90,38 @@ const STATS_WITH_ISSUES = Object.freeze({
 
 const SUMMARY_NEEDLES_EMPTY = Object.freeze([
   'Enum definition rejected.',
-  'Stats:',
-  '  received: 0',
-  '  valid: 0',
-  '  invalid: 0',
-  '  duplicates: 0',
-  '  collisions: 0',
+  '== Summary ==',
+  'received     0',
+  'valid        0',
+  'invalid      0',
+  'duplicates   0',
+  'collisions   0',
 ] as const)
 
-const DETAILS_NEEDLES_ABSENT_WHEN_EMPTY = Object.freeze([
-  'Details:',
-  'Invalid:',
-  'Duplicates:',
-  'Collisions (constants):',
-  'Collisions (names):',
+const ISSUES_NEEDLES_ABSENT_WHEN_EMPTY = Object.freeze([
+  '== Issues ==',
+  '[invalid]',
+  '[duplicates]',
+  '[collisions.constants]',
+  '[collisions.names]',
 ] as const)
 
 const SUMMARY_NEEDLES_WITH_ISSUES = Object.freeze([
   'Enum definition rejected.',
-  'Stats:',
-  '  received: 6',
-  '  valid: 2',
-  '  invalid: 3',
-  '  duplicates: 2',
-  '  collisions: 3 (constants: 2, names: 1)',
-  'Details:',
+  '== Summary ==',
+  'received     6',
+  'valid        2',
+  'invalid      3',
+  'duplicates   2',
+  'collisions   3 (constants: 2, names: 1)',
+  '== Issues ==',
 ] as const)
 
-const COLLISION_SECTION_NEEDLES = Object.freeze([
-  'Collisions (constants):',
-  'Collisions (names):',
+const ISSUE_SECTION_NEEDLES = Object.freeze([
+  '[invalid]',
+  '[duplicates]',
+  '[collisions.constants]',
+  '[collisions.names]',
 ] as const)
 
 // Assertion helper for stable ordering checks in rendered report text
@@ -127,7 +129,7 @@ function expectInOrder(text: string, needles: readonly string[]): void {
   let previousIndex = -1
 
   for (const needle of needles) {
-    const index = text.indexOf(needle)
+    const index = text.indexOf(needle, previousIndex + 1)
 
     expect(index, needle).toBeGreaterThanOrEqual(0)
     expect(index, needle).toBeGreaterThan(previousIndex)
@@ -146,10 +148,10 @@ describe('reports', () => {
       const text = toText(out)
 
       expectTextContainsAll(text, SUMMARY_NEEDLES_EMPTY)
-      expectTextNotContainsAny(text, DETAILS_NEEDLES_ABSENT_WHEN_EMPTY)
+      expectTextNotContainsAny(text, ISSUES_NEEDLES_ABSENT_WHEN_EMPTY)
     })
 
-    test('renders details with deterministic ordering without mutating inputs', () => {
+    test('renders issues with deterministic ordering without mutating inputs', () => {
       const out = buildDefinitionRejectedDetails(
         REPORT_WITH_ISSUES,
         STATS_WITH_ISSUES,
@@ -162,36 +164,52 @@ describe('reports', () => {
       // Summary exists and includes formatted collision stats
       expectTextContainsAll(text, SUMMARY_NEEDLES_WITH_ISSUES)
 
+      // Issue sections exist
+      expectTextContainsAll(text, ISSUE_SECTION_NEEDLES)
+
       // Invalids are sorted by index, then code
       expectInOrder(text, [
-        '  • [0] "ABC" — capsOnly:',
-        '  • [2] "a" — notMeaningful:',
-        '  • [2] "x" — tooShort:',
+        '[invalid]',
+        '-> [0] "ABC"',
+        '   code: capsOnly',
+        '   message: ALL_CAPS without digits is not allowed',
+        '-> [2] "a"',
+        '   code: notMeaningful',
+        '   message: must contain at least one letter',
+        '-> [2] "x"',
+        '   code: tooShort',
+        '   message: minimum length is 2',
       ])
 
       // Duplicates are sorted by value
       expectInOrder(text, [
-        '  • [1, 3] "a" — duplicate',
-        '  • [2, 5] "b" — duplicate',
+        '[duplicates]',
+        '-> [1, 3] "a"',
+        '   message: duplicate value',
+        '-> [2, 5] "b"',
+        '   message: duplicate value',
       ])
 
-      // Collision sections exist and constants are sorted by key
-      expectTextContainsAll(text, COLLISION_SECTION_NEEDLES)
-
+      // Constants collisions are sorted by key and sources are sorted too
       expectInOrder(text, [
-        '  • "A" — collision (sources):',
-        '    • "a1"',
-        '    • "a2"',
-        '  • "B" — collision (sources):',
-        '    • "b1"',
-        '    • "b2"',
+        '[collisions.constants]',
+        '-> "A"',
+        '   sources:',
+        '      - "a1"',
+        '      - "a2"',
+        '-> "B"',
+        '   sources:',
+        '      - "b1"',
+        '      - "b2"',
       ])
 
-      // Names sources are sorted too
+      // Names collisions sources are sorted too
       expectInOrder(text, [
-        '  • "Z" — collision (sources):',
-        '    • "z1"',
-        '    • "z2"',
+        '[collisions.names]',
+        '-> "Z"',
+        '   sources:',
+        '      - "z1"',
+        '      - "z2"',
       ])
 
       // Renderer must sort copies only; fixtures intentionally remain unsorted
