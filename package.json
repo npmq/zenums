@@ -1,6 +1,6 @@
 {
   "name": "zenums",
-  "version": "0.1.5-beta.1",
+  "version": "0.1.5",
   "description": "Type-safe enum creation for TypeScript and Zod. Stop duplicating your enums!",
   "keywords": [
     "typescript",
